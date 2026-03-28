@@ -13,6 +13,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use("/api/investment", require("./routes/investment.routes"));
+
 app.get("/", (req, res) => {
   res.send("Server is running");
 });
