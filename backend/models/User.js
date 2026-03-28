@@ -19,8 +19,8 @@ const userSchema = new mongoose.Schema(
     },
     riskPreference: {
       type: String,
-      enum: ["low", "medium", "high"],
-      default: "medium",
+      enum: ["Conservative", "Moderate", "Aggressive"],
+      default: "Moderate",
     },
   },
   { timestamps: true },
