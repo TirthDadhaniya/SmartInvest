@@ -13,7 +13,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/investment", require("./routes/investment.routes"));
+app.use("/api/investments", require("./routes/investment.routes"));
+app.use("/api/sips", require("./routes/sip.routes"));
+app.use("/api/transactions", require("./routes/transaction.routes"));
+app.use("/api/goals", require("./routes/goal.routes"));
 
 app.get("/", (req, res) => {
   res.send("Server is running");
