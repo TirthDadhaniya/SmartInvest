@@ -10,6 +10,7 @@ const investmentSchema = new mongoose.Schema(
     scheme_code: {
       type: Number,
       required: true,
+      unique: true,
     },
     scheme_name: {
       type: String,
@@ -28,6 +29,7 @@ const investmentSchema = new mongoose.Schema(
     investedAmount: {
       type: Number,
       required: true,
+      min: 0,
     },
     units: {
       type: Number,
