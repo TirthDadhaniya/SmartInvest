@@ -12,7 +12,7 @@ exports.createInvestment = async (req, res) => {
 };
 
 // GET Investment
-exports.getInvestment = async (req, res) => {
+exports.getInvestments = async (req, res) => {
   try {
     const investments = await Investment.find();
     res.status(200).json({

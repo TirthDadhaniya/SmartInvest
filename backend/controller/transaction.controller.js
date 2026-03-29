@@ -12,12 +12,12 @@ exports.createTransaction = async (req, res) => {
 };
 
 // GET Transaction
-exports.getTransaction = async (req, res) => {
+exports.getTransactions = async (req, res) => {
   try {
-    const transaction = await Transaction.find();
+    const transactions = await Transaction.find();
     res.status(200).json({
       success: true,
-      data: transaction,
+      data: transactions,
     });
   } catch (error) {}
 };

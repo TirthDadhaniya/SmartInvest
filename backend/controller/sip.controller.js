@@ -12,12 +12,12 @@ exports.createSIP = async (req, res) => {
 };
 
 // GET SIP
-exports.getSIP = async (req, res) => {
+exports.getSIPs = async (req, res) => {
   try {
-    const sip = await SIP.find();
+    const sips = await SIP.find();
     res.status(200).json({
       success: true,
-      data: sip,
+      data: sips,
     });
   } catch (error) {}
 };
