@@ -38,11 +38,6 @@ exports.registerUser = async (req, res) => {
     // Create user
     const user = await User.create({ name, email, passwordHash, riskPreference });
 
-    // Generate Token
-    // const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-
-    // res.cookie("token", token);
-
     if (user) {
       const userData = {
         _id: user._id,
@@ -55,7 +50,7 @@ exports.registerUser = async (req, res) => {
         success: true,
         data: {
           user: userData,
-          token: generateToken(user._id),
+          message: "User created successfully",
         },
       });
     } else {
@@ -125,7 +120,68 @@ exports.loginUser = async (req, res) => {
 //GET user
 exports.getUser = async (req, res) => {
   try {
-    const { name, email, passwordHash, riskPreference } = req.body;
+    const user = await User.findById(req.user._id).select("-passwordHash");
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// POST user
+exports.updateUser = async (req, res) => {
+  try {
+    const { name, email, riskPreference } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+      if (email && email !== user.email) {
+        const emailExist = await User.findOne({ email });
+        if (emailExist) {
+          return res.status(400).json({
+            success: false,
+            message: "Email already in use",
+          });
+        }
+      }
+
+      user.name = name || user.name;
+      user.email = email || user.email;
+      user.riskPreference = riskPreference || user.riskPreference;
+
+      const updatedUser = await user.save();
+
+      const userData = {
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        riskPreference: updatedUser.riskPreference,
+      };
+
+      res.status(200).json({
+        success: true,
+        data: { user: userData },
+      });
+    } else {
+      res.status(404).json({ success: false, message: "User not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Logout
+exports.logoutUser = async (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
