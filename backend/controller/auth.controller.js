@@ -95,6 +95,13 @@ exports.loginUser = async (req, res) => {
       });
     }
 
+    res.cookie("token", `Bearer ${generateToken(user._id)}`, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+
     const userData = {
       _id: user._id,
       name: user.name,
@@ -106,7 +113,7 @@ exports.loginUser = async (req, res) => {
       message: "User Logged In",
       data: {
         user: userData,
-        token: generateToken(user._id),
+        // token: generateToken(user._id),
       },
     });
   } catch (error) {
