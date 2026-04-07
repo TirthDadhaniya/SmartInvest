@@ -5,9 +5,8 @@ exports.protect = async (req, res, next) => {
   try {
     let token;
 
-    // Check header
-    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-      token = req.headers.authorization.split(" ")[1];
+    if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
     }
 
     // If no token
@@ -18,7 +17,7 @@ exports.protect = async (req, res, next) => {
       });
     }
 
-    const decode = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Get user from DB
     const user = await User.findById(decoded.id).select("-passwordHash");
