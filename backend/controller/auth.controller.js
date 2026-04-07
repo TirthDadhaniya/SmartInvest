@@ -67,10 +67,10 @@ exports.registerUser = async (req, res) => {
 //LOGIN user
 exports.loginUser = async (req, res) => {
   try {
-    const { email, passwordHash } = req.body;
+    const { email, password } = req.body;
 
     // Check for all fields
-    if (!email || !passwordHash) {
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
         message: "Please provide all required fields",
@@ -87,15 +87,15 @@ exports.loginUser = async (req, res) => {
     }
 
     // Check password
-    const isMatch = await bcrypt.compare(passwordHash, user.passwordHash);
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
       return res.status(400).json({
-        succes: false,
+        success: false,
         message: "Invalid email or password",
       });
     }
 
-    res.cookie("token", `Bearer ${generateToken(user._id)}`, {
+    res.cookie("token", generateToken(user._id), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -140,15 +140,29 @@ exports.getUser = async (req, res) => {
   }
 };
 
-// POST user
+// UPDATE user
 exports.updateUser = async (req, res) => {
   try {
     const { name, email, riskPreference } = req.body;
     const user = await User.findById(req.user._id);
 
     if (user) {
-      if (email && email !== user.email) {
-        const emailExist = await User.findOne({ email });
+      const normalizedEmail =
+        typeof email === "string" ? email.trim().toLowerCase() : undefined;
+
+      if (normalizedEmail) {
+        if (normalizedEmail === user.email) {
+          return res.status(400).json({
+            success: false,
+            message: "New email must be different from current email",
+          });
+        }
+
+        const emailExist = await User.findOne({
+          email: normalizedEmail,
+          _id: { $ne: user._id },
+        });
+
         if (emailExist) {
           return res.status(400).json({
             success: false,
@@ -158,7 +172,7 @@ exports.updateUser = async (req, res) => {
       }
 
       user.name = name || user.name;
-      user.email = email || user.email;
+      user.email = normalizedEmail || user.email;
       user.riskPreference = riskPreference || user.riskPreference;
 
       const updatedUser = await user.save();
@@ -185,6 +199,12 @@ exports.updateUser = async (req, res) => {
 // Logout
 exports.logoutUser = async (req, res) => {
   try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
     res.status(200).json({
       success: true,
       message: "Logged out successfully",
