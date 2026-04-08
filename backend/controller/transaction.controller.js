@@ -1,23 +1,56 @@
 const Transaction = require("../models/Transaction");
-
-// CREATE Transaction
-exports.createTransaction = async (req, res) => {
-  try {
-    const transaction = await Transaction.create(req.body);
-    res.status(200).json({
-      success: true,
-      data: transaction,
-    });
-  } catch (error) {}
-};
+const { createTransaction } = require("../services/transaction.service");
 
 // GET Transaction
 exports.getTransactions = async (req, res) => {
   try {
-    const transactions = await Transaction.find();
+    const transactions = await Transaction.find({ userID: req.user._id }).sort({
+      date: -1,
+    });
     res.status(200).json({
       success: true,
       data: transactions,
     });
-  } catch (error) {}
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching transactions",
+    });
+  }
 };
+
+// CREATE Transaction
+// exports.createTransaction = async (req, res) => {
+//   try {
+//     const { scheme_code, scheme_name, type, amount, units, nav, date, profitLoss } =
+//       req.body;
+
+//     if (!scheme_code || !sceheme_name || !type || !amount || !units || !nav || !date) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Required fields are missing",
+//       });
+//     }
+
+//     const transaction = await Transaction.create({
+//       userID: req.user._id,
+//       scheme_code,
+//       scheme_name,
+//       type,
+//       amount,
+//       units,
+//       nav,
+//       date,
+//       profitLoss,
+//     });
+//     res.status(201).json({
+//       success: true,
+//       data: transaction,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Error creating transaction",
+//     });
+//   }
+// };
