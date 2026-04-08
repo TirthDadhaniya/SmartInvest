@@ -9,7 +9,6 @@ const transactionSchema = new mongoose.Schema(
     scheme_code: {
       type: Number,
       required: true,
-      unique: true,
     },
     scheme_name: {
       type: String,
@@ -17,7 +16,7 @@ const transactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["buy", "sell", "sip"],
+      enum: ["buy", "sell", "sip", "redemption"],
       required: true,
     },
     amount: {
