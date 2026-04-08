@@ -25,7 +25,7 @@ exports.registerUser = async (req, res) => {
     // Check if user already exits
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
         message: "User already exists",
       });
@@ -80,7 +80,7 @@ exports.loginUser = async (req, res) => {
     // Check if user exists
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({
+      return res.status(404).json({
         success: false,
         message: "INavalid credentials",
       });
@@ -152,7 +152,7 @@ exports.updateUser = async (req, res) => {
 
       if (normalizedEmail) {
         if (normalizedEmail === user.email) {
-          return res.status(400).json({
+          return res.status(409).json({
             success: false,
             message: "New email must be different from current email",
           });
@@ -164,7 +164,7 @@ exports.updateUser = async (req, res) => {
         });
 
         if (emailExist) {
-          return res.status(400).json({
+          return res.status(409).json({
             success: false,
             message: "Email already in use",
           });

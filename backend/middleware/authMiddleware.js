@@ -23,7 +23,7 @@ exports.protect = async (req, res, next) => {
     const user = await User.findById(decoded.id).select("-passwordHash");
 
     if (!user) {
-      return res.status(401).json({
+      return res.status(404).json({
         success: false,
         message: "User not found",
       });
