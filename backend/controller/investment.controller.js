@@ -1,5 +1,6 @@
 const Investment = require("../models/Investment");
 const Transaction = require("../models/Transaction");
+const { createTransaction } = require("../services/transaction.service");
 
 // GET Investment
 exports.getInvestments = async (req, res) => {
@@ -65,6 +66,16 @@ exports.createInvestment = async (req, res) => {
       type,
     });
 
+    await createTransaction({
+      userID: userId,
+      scheme_code,
+      scheme_name,
+      type: "buy",
+      amount: investedAmount,
+      units,
+      nav: purchaseNAV,
+      date: purchaseDate,
+    });
     res.status(201).json({
       success: true,
       message: "Investment created successfully",
@@ -130,6 +141,17 @@ exports.sellInvestment = async (req, res) => {
 
       await investment.save();
 
+      await createTransaction({
+        userID: req.user._id,
+        scheme_code: investment.scheme_code,
+        scheme_name: investment.scheme_name,
+        type: "sell",
+        amount: sellAmount,
+        units: unitsToSell,
+        nav: currentNAV,
+        date: new Date().toISOString(),
+      });
+
       res.status(200).json({
         success: true,
         message: "Investment updated successfully",
@@ -171,6 +193,17 @@ exports.deleteInvestment = async (req, res) => {
     }
 
     await investment.deleteOne();
+
+    await createTransaction({
+      userID: req.user._id,
+      scheme_code: investment.scheme_code,
+      scheme_name: investment.scheme_name,
+      type: "redemption",
+      amount: investment.investedAmount,
+      units: investment.units,
+      nav: investment.purchaseNAV,
+      date: new Date().toISOString(),
+    });
 
     res.status(200).json({
       success: true,
