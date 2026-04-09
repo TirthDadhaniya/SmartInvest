@@ -52,10 +52,15 @@ const sipSchema = new mongoose.Schema(
       enum: ["active", "paused", "stopped"],
       default: "active",
     },
-    createdAt: {
+    lastExecutedDate: {
       type: Date,
-      required: true,
+      default: null,
     },
+    // goalId: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "Goal",
+    //   default: null,
+    // },
   },
   { timestamps: true },
 );
