@@ -1,5 +1,6 @@
 const Investment = require("../models/Investment");
 const Transaction = require("../models/Transaction");
+const { createInvestment } = require("../services/investment.service");
 const { createTransaction } = require("../services/transaction.service");
 
 // GET Investment
@@ -22,59 +23,20 @@ exports.getInvestments = async (req, res) => {
 // CREATE Investment
 exports.createInvestment = async (req, res) => {
   try {
-    const {
-      scheme_code,
-      scheme_name,
-      fund_house,
-      scheme_type,
-      scheme_category,
-      investedAmount,
-      purchaseNAV,
-      purchaseDate,
-      type,
-    } = req.body;
-
-    const userId = req.user._id;
-
-    if (
-      !scheme_code ||
-      !scheme_name ||
-      !scheme_category ||
-      !investedAmount ||
-      !purchaseNAV ||
-      !purchaseDate
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide all required fields",
-      });
-    }
-
-    const units = investedAmount / purchaseNAV;
-
-    const investment = await Investment.create({
-      userID: userId,
-      scheme_code,
-      scheme_name,
-      fund_house,
-      scheme_type,
-      scheme_category,
-      investedAmount,
-      units,
-      purchaseNAV,
-      purchaseDate,
-      type,
+    const investment = await createInvestment({
+      userID: req.user._id,
+      ...req.body,
     });
 
     await createTransaction({
-      userID: userId,
-      scheme_code,
-      scheme_name,
+      userID: req.user._id,
+      scheme_code: investment.scheme_code,
+      scheme_name: investment.scheme_name,
       type: "buy",
-      amount: investedAmount,
-      units,
-      nav: purchaseNAV,
-      date: purchaseDate,
+      amount: investment.investedAmount,
+      units: investment.units,
+      nav: investment.purchaseNAV,
+      date: investment.purchaseDate,
     });
     res.status(201).json({
       success: true,
