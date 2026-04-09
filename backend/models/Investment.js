@@ -26,6 +26,9 @@ const investmentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    subCategory: {
+      type: String,
+    },
     investedAmount: {
       type: Number,
       required: true,
