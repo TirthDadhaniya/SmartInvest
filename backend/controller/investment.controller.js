@@ -94,12 +94,15 @@ exports.sellInvestment = async (req, res) => {
   try {
     const { unitsToSell, currentNAV } = req.body;
 
-    const investment = await Investment.findById(req.params.id);
+    const investment = await Investment.findOne({
+      _id: req.params.id,
+      userID: req.user._id,
+    });
 
     if (!investment) {
       return res.status(404).json({
         success: false,
-        message: "Investment not found",
+        message: "Investment not found or not authorized",
       });
     }
 
@@ -175,24 +178,17 @@ exports.sellInvestment = async (req, res) => {
 // DELETE investment
 exports.deleteInvestment = async (req, res) => {
   try {
-    const investment = await Investment.findById(req.params.id);
+    const investment = await Investment.findOneAndDelete({
+      _id: req.params.id,
+      userID: req.user._id,
+    });
 
     if (!investment) {
       return res.status(404).json({
         success: false,
-        message: "Investment not found",
+        message: "Investment not found or not authorized",
       });
     }
-
-    // Check ownership
-    if (investment.userID.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized",
-      });
-    }
-
-    await investment.deleteOne();
 
     await createTransaction({
       userID: req.user._id,
