@@ -4,9 +4,29 @@ const { createTransaction } = require("../services/transaction.service");
 // GET Transaction
 exports.getTransactions = async (req, res) => {
   try {
-    const transactions = await Transaction.find({ userID: req.user._id }).sort({
-      date: -1,
-    });
+    const { type, scheme_code, from, to } = req.query;
+
+    let filter = { userID: req.user._id };
+
+    if (type) {
+      filter.type = type;
+    }
+
+    if (scheme_code) {
+      filter.scheme_code = scheme_code;
+    }
+
+    if (from || to) {
+      filter.date = {};
+      if (from) {
+        filter.date.$gte = new Date(from);
+      }
+      if (to) {
+        filter.date.$lte = new Date(to);
+      }
+    }
+
+    const transactions = await Transaction.find(filter).sort({ date: -1 });
     res.status(200).json({
       success: true,
       data: transactions,
