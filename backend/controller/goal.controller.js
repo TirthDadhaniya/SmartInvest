@@ -1,25 +1,50 @@
 const Goal = require("../models/Goal");
 
-// CREATE Goal
-exports.createGoal = async (req, res) => {
-  try {
-    const goal = await Goal.create(req.body);
-    res.status(200).json({
-      success: true,
-      data: goal,
-    });
-  } catch (error) {}
-};
-
 // GET Goals
 exports.getGoals = async (req, res) => {
   try {
-    const goals = await Goal.find();
+    const goals = (await Goal.find({ userID: req.user._id })).toSorted({ name: 1 });
     res.status(200).json({
       success: true,
       data: goals,
     });
-  } catch (error) {}
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching goals",
+    });
+  }
+};
+
+// CREATE Goal
+exports.createGoal = async (req, res) => {
+  try {
+    const { name, targetAmount, targetDate } = req.body;
+
+    if (!name || !targetAmount || !targetDate) {
+      res.status(400).json({
+        success: false,
+        message: "Please provide all required fields",
+      });
+    }
+
+    const goal = await Goal.create({
+      userID: req.user._id,
+      name,
+      targetAmount,
+      targetDate,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: goal,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error creating goal",
+    });
+  }
 };
 
 // GET BY ID
