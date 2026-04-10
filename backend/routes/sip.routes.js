@@ -8,6 +8,7 @@ router.get("/", protect, sipController.getAllSIPs);
 router.post("/", protect, sipController.createSIP);
 router.put("/:id/status", protect, sipController.updateSIPStatus);
 router.put("/:id", protect, sipController.updateSIP);
+router.post("/:id/execute", protect, sipController.executeSIPInstalment);
 router.delete("/:id", protect, sipController.deleteSIP);
 
 module.exports = router;
