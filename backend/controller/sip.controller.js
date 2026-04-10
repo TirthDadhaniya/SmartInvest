@@ -1,5 +1,11 @@
 const SIP = require("../models/SIP");
-const { createTransaction } = require("../services/transaction.service");
+const { executeSIPInstalment } = require("../services/sip.service");
+
+const normalizeToDateOnly = (value) => {
+  const date = new Date(value);
+  date.setUTCHours(0, 0, 0, 0);
+  return date;
+};
 
 // GET SIP
 exports.getAllSIPs = async (req, res) => {
@@ -66,8 +72,16 @@ exports.createSIP = async (req, res) => {
 
     const userId = req.user._id;
 
-    const nextDueDate = new Date(startDate);
-    nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+    const normalizedStartDate = normalizeToDateOnly(startDate);
+
+    if (Number.isNaN(normalizedStartDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid start date",
+      });
+    }
+
+    const nextDueDate = new Date(normalizedStartDate);
 
     const sip = await SIP.create({
       userID: userId,
@@ -77,7 +91,7 @@ exports.createSIP = async (req, res) => {
       scheme_type,
       scheme_category,
       monthlyAmount,
-      startDate,
+      startDate: normalizedStartDate,
       nextDueDate,
       expectedReturnRate,
       durationYears,
@@ -196,6 +210,50 @@ exports.deleteSIP = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "SIP deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.executeSIPInstalment = async (req, res) => {
+  try {
+    const { currentNAV } = req.body;
+    // currentNAV passed from frontend after fetching from MFAPI
+
+    if (!currentNAV) {
+      return res.status(400).json({
+        success: false,
+        message: "Current NAV is required to execute SIP instalment",
+      });
+    }
+
+    const executionDate = new Date();
+
+    const result = await executeSIPInstalment({
+      sipId: req.params.id,
+      userId: req.user._id,
+      currentNAV,
+      executionDate,
+    });
+
+    if (!result.success) {
+      return res.status(result.statusCode || 400).json({
+        success: false,
+        message: result.message,
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        message: "SIP instalment executed successfully",
+        investment: result.investment,
+        nextDueDate: result.nextDueDate,
+      },
     });
   } catch (error) {
     res.status(500).json({
