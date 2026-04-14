@@ -79,15 +79,17 @@ exports.loginUser = async (req, res) => {
 
     // Check if user exists
     const user = await User.findOne({ email });
+
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "INavalid credentials",
+        message: "Invalid credentials",
       });
     }
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.passwordHash);
+
     if (!isMatch) {
       return res.status(400).json({
         success: false,
@@ -127,7 +129,8 @@ exports.loginUser = async (req, res) => {
 //GET user
 exports.getUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select("-passwordHash");
+    const user = req.user;
+
     res.status(200).json({
       success: true,
       data: user,

@@ -10,7 +10,6 @@ const sipSchema = new mongoose.Schema(
     scheme_code: {
       type: Number,
       required: true,
-      unique: true,
     },
     scheme_name: {
       type: String,

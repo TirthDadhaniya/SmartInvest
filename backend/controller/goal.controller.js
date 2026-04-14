@@ -5,6 +5,7 @@ const Investment = require("../models/Investment");
 exports.getGoals = async (req, res) => {
   try {
     const goals = await Goal.find({ userID: req.user._id }).sort({ name: 1 });
+
     res.status(200).json({
       success: true,
       data: goals,
@@ -147,8 +148,6 @@ exports.getGoalProgress = async (req, res) => {
         },
       },
     ]);
-
-    console.log("Total Current Value:", totalCurrentValue[0].totalInvested);
 
     const progressPercent =
       (totalCurrentValue[0]?.totalInvested / goal.targetAmount) * 100 || 0;

@@ -3,7 +3,7 @@ const Transaction = require("../models/Transaction");
 const { createInvestment } = require("../services/investment.service");
 const { createTransaction } = require("../services/transaction.service");
 
-// GET Investment
+// GET /api/investments/
 exports.getInvestments = async (req, res) => {
   try {
     const investments = await Investment.find({ userID: req.user._id }).sort({ name: 1 });
@@ -20,7 +20,7 @@ exports.getInvestments = async (req, res) => {
   }
 };
 
-// CREATE Investment
+// POST /api/investments/
 exports.createInvestment = async (req, res) => {
   try {
     const investment = await createInvestment({
