@@ -11,6 +11,7 @@ const createInvestment = async ({
   purchaseNAV,
   purchaseDate,
   type,
+  expenseRatio,
 }) => {
   if (
     !scheme_code ||
@@ -40,6 +41,7 @@ const createInvestment = async ({
     purchaseNAV,
     purchaseDate,
     type,
+    expenseRatio: expenseRatio || 0,
   });
 
   return investment;
