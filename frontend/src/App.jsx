@@ -1,13 +1,15 @@
 import React from "react";
-import FundRow from "./components/FundRow";
-import Investment from "./pages/Investment";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Register from "./pages/Register";
 
 const App = () => {
   return (
-    <>
-      <Register />
-    </>
+    <Router>
+      <Routes>
+        <Route path="/register" element={<Register />} />
+        {/* <Route path="/login" element={<Login />} /> */}
+      </Routes>
+    </Router>
   );
 };
 
