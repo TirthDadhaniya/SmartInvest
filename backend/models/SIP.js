@@ -41,6 +41,8 @@ const sipSchema = new mongoose.Schema(
     expectedReturnRate: {
       type: Number,
       required: true,
+      default: 12,
+      min: 0,
     },
     durationYears: {
       type: Number,
