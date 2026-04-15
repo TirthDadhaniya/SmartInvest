@@ -1,14 +1,7 @@
 import React from "react";
 
-const login = () => {
-  return (
-    <>
-      <div className="navbar">
-        <div>SmartInvest</div>
-        <div>New to SmartInvest?</div>
-      </div>
-    </>
-  );
+const Login = () => {
+  return <div>Login</div>;
 };
 
-export default login;
+export default Login;

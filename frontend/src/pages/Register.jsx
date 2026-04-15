@@ -9,6 +9,9 @@ import {
 } from "react-icons/md";
 
 const Register = () => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+  };
   return (
     <>
       <div className="topbar flex items-center justify-between px-10 py-3 bg-surface border border-border">
@@ -28,11 +31,13 @@ const Register = () => {
         <div className="main flex flex-col gap-8 w-lg h-fit mx-auto mt-5 bg-white rounded-xl shadow-xl py-8 px-12 text-center border border-border">
           <div className="top flex flex-col gap-2 w-full">
             <h3 className="text-3xl font-bold">Create your account</h3>
-            <p className="text-t-secondary">Join 50,000+ investors securing their future.</p>
+            <p className="text-t-secondary">
+              Join 50,000+ investors securing their future.
+            </p>
           </div>
           <div className="form flex flex-col items-start w-full h-fit gap-5">
             <div className="name w-full flex flex-col items-start gap-1">
-              <label htmlFor="first-name" className="text-sm text-slate-700 font-semibold">
+              <label htmlFor="full-name" className="text-sm text-slate-700 font-semibold">
                 Full Name
               </label>
               <div className="relative flex items-center gap-1 w-full">
@@ -60,7 +65,10 @@ const Register = () => {
             </div>
 
             <div className="number w-full flex flex-col items-start gap-1">
-              <label htmlFor="mobile_number" className="text-sm text-slate-700 font-semibold">
+              <label
+                htmlFor="mobile_number"
+                className="text-sm text-slate-700 font-semibold"
+              >
                 Phone Number
               </label>
               <div className="relative flex items-center gap-1 w-full">
@@ -97,7 +105,10 @@ const Register = () => {
             </div>
             <div className="w-full text-center flex items-center justify-center gap-1">
               <p className="text-sm text-t-secondary">Already have an account?</p>
-              <p className="text-sm text-primary font-semibold hover:underline cursor-pointer"> Log in here</p>
+              <p className="text-sm text-primary font-semibold hover:underline cursor-pointer">
+                {" "}
+                Log in here
+              </p>
             </div>
           </div>
         </div>

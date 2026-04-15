@@ -2,533 +2,474 @@ import React from "react";
 
 const Dashboard = () => {
   return (
-    <>
-      <div class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased font-display">
-        <div class="flex min-h-screen">
-          {/* <!-- Persistent Sidebar (240px) --> */}
-          <aside class="w-[240px] flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col fixed h-full z-20">
-            <div class="p-6 flex items-center gap-3">
-              <div class="bg-primary size-8 rounded flex items-center justify-center text-white">
-                <span class="material-symbols-outlined">account_balance_wallet</span>
-              </div>
-              <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-none">
-                SmartInvest
-              </h1>
+    <div className="p-4 md:p-8 space-y-8 max-w-[1200px] mx-auto w-full animate-in fade-in duration-300">
+      {/* SIP Reminder Strip */}
+      {nextSip && (
+        <div className="bg-primary text-white p-4 rounded-xl flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <MdOutlineEventRepeat className="text-xl" />
             </div>
-            <nav class="flex-1 px-4 space-y-1">
-              <a
-                class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary font-medium"
-                href="#"
+            <p className="text-sm font-medium">
+              SIP Reminder: Your monthly investment is scheduled for{" "}
+              <span className="font-bold">
+                {new Date(nextSip.nextDueDate).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </span>
+              .
+            </p>
+          </div>
+          <Link
+            to="/manage"
+            className="text-xs font-bold uppercase tracking-widest bg-white text-primary px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors no-underline"
+          >
+            Adjust Amount
+          </Link>
+        </div>
+      )}
+
+      {/* Summary Cards + Asset Allocation */}
+      <div className="grid grid-cols-12 gap-6">
+        {/* Left: Summary Metrics */}
+        <div className="col-span-12 lg:col-span-8 grid grid-cols-2 gap-6">
+          <div className="bg-surface p-6 rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-[10px] uppercase tracking-widest text-t-secondary font-bold mb-1">
+              TOTAL INVESTED
+            </p>
+            <h3 className="text-2xl font-bold text-t-primary">
+              {formatINR(totalInvested)}
+            </h3>
+          </div>
+          <div className="bg-surface p-6 rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-[10px] uppercase tracking-widest text-t-secondary font-bold mb-1">
+              CURRENT VALUE
+            </p>
+            <h3 className="text-2xl font-bold text-t-primary">
+              {formatINR(totalCurrentValue)}
+            </h3>
+            <div className="mt-3 flex items-center gap-2 text-blue-700 text-[12px] font-bold">
+              <MdOutlinePieChart className="text-sm" /> Portfolio active
+            </div>
+          </div>
+          <div className="bg-surface p-6 rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-[10px] uppercase tracking-widest text-t-secondary font-bold mb-1">
+              PROFIT/LOSS
+            </p>
+            <div className="flex items-baseline gap-2">
+              <h3
+                className={`text-2xl font-bold ${isProfit ? "text-positive" : "text-negative"}`}
               >
-                <span class="material-symbols-outlined">dashboard</span>
-                <span class="text-sm">Dashboard</span>
-              </a>
-              <a
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                href="#"
+                {isProfit ? "+" : ""}
+                {formatINR(totalProfitLoss)}
+              </h3>
+              <span
+                className={`text-sm font-bold px-2 py-0.5 rounded-full ${isProfit ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"}`}
               >
-                <span class="material-symbols-outlined">pie_chart</span>
-                <span class="text-sm">Portfolio</span>
-              </a>
-              <a
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                href="#"
-              >
-                <span class="material-symbols-outlined">trending_up</span>
-                <span class="text-sm">Market</span>
-              </a>
-              <a
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                href="#"
-              >
-                <span class="material-symbols-outlined">calendar_today</span>
-                <span class="text-sm">SIPs</span>
-              </a>
-              <a
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                href="#"
-              >
-                <span class="material-symbols-outlined">history</span>
-                <span class="text-sm">Transactions</span>
-              </a>
-            </nav>
-            <div class="p-4 border-t border-slate-200 dark:border-slate-800">
-              <div class="flex items-center gap-3 px-2 py-3">
+                {isProfit ? "+" : ""}
+                {formatPercent(totalReturnPercent)}
+              </span>
+            </div>
+          </div>
+          <div className="bg-surface p-6 rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-[10px] uppercase tracking-widest text-t-secondary font-bold mb-1">
+              HEALTH SCORE
+            </p>
+            <div className="flex items-center gap-4">
+              <h3 className="text-2xl font-bold text-t-primary">
+                {healthScore}
+                <span className="text-slate-400 font-normal text-lg">/100</span>
+              </h3>
+              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  class="size-10 rounded-full bg-slate-200 dark:bg-slate-700 bg-center bg-cover"
-                  data-alt="User profile avatar portrait"
-                  style='
-                background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBIGdRyYs_Ior6MMq5cYZJgns3FyDXPYnqOm58wmzyI7w_UZmZ7K_S99aqEs0O-SfNPltHi4orcILTVAmxFaEhjh31aKnGMBClp_8RNB3q5_pjxrPjd0O0twLtHp_lbN5Nt92FiGy6N8d16NiCZhOKeVLB5QssQ6p3TV9zGHTdjqjqgEEEwDxschY-PF2p8TtByDzDjAdS8c9G55bccohNDRs3sHwBV2QNN8fW8J5oLbINL_ZIoXHickBXjpycEG80Xe_1iyPuhbEHc");
-              '
+                  className={`h-full rounded-full transition-all duration-1000 ${healthScore > 70 ? "bg-green-500" : healthScore > 40 ? "bg-amber-500" : "bg-red-500"}`}
+                  style={{ width: `${healthScore}%` }}
                 ></div>
-                <div class="flex flex-col min-w-0">
-                  <p class="text-sm font-semibold truncate">Alex Rivera</p>
-                  <p class="text-xs text-slate-500 truncate">Premium Member</p>
-                </div>
-                <span class="material-symbols-outlined text-slate-400 ml-auto text-sm">
-                  settings
-                </span>
               </div>
             </div>
-          </aside>
-          {/* Main Content Area */}
-          <main class="flex-1 ml-[240px]">
-            {/* Top Navbar */}
-            <header class="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 h-16 flex items-center justify-between px-8">
-              <div class="flex items-center gap-4">
-                <h2 class="text-lg font-bold">Overview</h2>
-                <div class="h-4 w-px bg-slate-200 dark:bg-slate-800"></div>
-                <div class="flex items-center gap-2">
-                  <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">
-                    Net Worth
-                  </span>
-                  <span class="text-lg font-bold text-primary">$52,140.50</span>
-                  <span class="text-xs font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded">
-                    +15.3%
-                  </span>
+          </div>
+        </div>
+
+        {/* Right: Asset Allocation Donut */}
+        <div className="col-span-12 lg:col-span-4 bg-surface p-6 rounded-xl border border-border shadow-sm">
+          <p className="text-[10px] uppercase tracking-widest text-t-secondary font-bold mb-6">
+            ASSET ALLOCATION
+          </p>
+          {pieData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-t-placeholder h-40">
+              <MdOutlinePieChart className="text-4xl mb-2 opacity-50" />
+              <p className="font-medium text-sm">No data</p>
+            </div>
+          ) : (
+            <>
+              <div className="relative w-40 h-40 mx-auto mb-6">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={3}
+                      dataKey="value"
+                      stroke="none"
+                      isAnimationActive={true}
+                      animationDuration={800}
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="text-xs text-t-secondary uppercase font-bold tracking-tight">
+                    Equity
+                  </p>
+                  <p className="text-xl font-black text-t-primary">
+                    {Math.round(assetAllocation.equity)}%
+                  </p>
                 </div>
               </div>
-              <div class="flex items-center gap-6">
-                <div class="relative w-64">
-                  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">
-                    search
-                  </span>
-                  <input
-                    class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg pl-10 text-sm focus:ring-2 focus:ring-primary/20"
-                    placeholder="Search assets..."
-                    type="text"
-                  />
-                </div>
-                <button class="bg-primary text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-primary/90 transition-all flex items-center gap-2">
-                  <span class="material-symbols-outlined text-sm">add</span> Add Funds
-                </button>
-                <div class="relative">
-                  <span class="material-symbols-outlined text-slate-500">
-                    notifications
-                  </span>
-                  <div class="absolute -top-1 -right-1 size-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></div>
-                </div>
-              </div>
-            </header>
-            <div class="p-8 space-y-8 max-w-[1200px] mx-auto">
-              {/* Row of 4 summary cards */}
-              <div class="grid grid-cols-4 gap-6">
-                <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <p class="text-slate-500 text-sm font-medium">Total Invested</p>
-                  <p class="text-2xl font-bold mt-1">$45,200.00</p>
-                  <div class="mt-4 flex items-center gap-1 text-slate-400 text-xs">
-                    <span class="material-symbols-outlined text-xs">info</span> All time
-                    principal
-                  </div>
-                </div>
-                <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <p class="text-slate-500 text-sm font-medium">Current Value</p>
-                  <p class="text-2xl font-bold mt-1 text-primary">$52,140.50</p>
-                  <div class="mt-4 flex items-center gap-1 text-green-600 text-xs font-bold">
-                    <span class="material-symbols-outlined text-xs">trending_up</span>{" "}
-                    +15.3% growth
-                  </div>
-                </div>
-                <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <p class="text-slate-500 text-sm font-medium">Unrealized P/L</p>
-                  <p class="text-2xl font-bold mt-1 text-green-600">+$6,940.50</p>
-                  <div class="mt-4 flex items-center gap-1 text-green-600 text-xs font-bold">
-                    <span class="material-symbols-outlined text-xs">call_made</span>{" "}
-                    +18.2% CAGR
-                  </div>
-                </div>
-                <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <p class="text-slate-500 text-sm font-medium">Portfolio Health</p>
-                  <p class="text-2xl font-bold mt-1">92/100</p>
-                  <div class="mt-4 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      class="h-full bg-green-500 rounded-full"
-                      style="width: 92%"
-                    ></div>
-                  </div>
-                </div>
-              </div>
-              {/* Allocation and Risk Row */}
-              <div class="grid grid-cols-12 gap-6">
-                {/* Allocation Donut Area */}
-                <div class="col-span-8 bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <div class="flex items-center justify-between mb-6">
-                    <h3 class="font-bold text-slate-800 dark:text-white">
-                      Asset Allocation
-                    </h3>
-                    <select class="text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded p-1">
-                      <option>Current Portfolio</option>
-                      <option>Historical</option>
-                    </select>
-                  </div>
-                  <div class="flex items-center gap-12">
-                    <div class="relative size-48">
-                      <svg class="size-full" viewbox="0 0 36 36">
-                        <path
-                          class="text-slate-100 dark:text-slate-800"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="4"
-                        ></path>
-                        {/* <!-- Equity 60% --> */}
-                        <path
-                          class="text-primary"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-dasharray="60, 100"
-                          stroke-linecap="round"
-                          stroke-width="4"
-                        ></path>
-                        {/* <!-- Debt 25% --> */}
-                        <path
-                          class="text-indigo-400"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-dasharray="25, 100"
-                          stroke-dashoffset="-60"
-                          stroke-linecap="round"
-                          stroke-width="4"
-                        ></path>
-                        {/* <!-- Gold 15% --> */}
-                        <path
-                          class="text-yellow-500"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-dasharray="15, 100"
-                          stroke-dashoffset="-85"
-                          stroke-linecap="round"
-                          stroke-width="4"
-                        ></path>
-                      </svg>
-                      <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span class="text-2xl font-bold">100%</span>
-                        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">
-                          Invested
-                        </span>
-                      </div>
-                    </div>
-                    <div class="flex-1 grid grid-cols-2 gap-4">
-                      <div class="flex items-center gap-3">
-                        <div class="size-3 rounded-full bg-primary"></div>
-                        <div class="flex flex-col">
-                          <span class="text-xs text-slate-500">Equity</span>
-                          <span class="text-sm font-bold">60% ($31,284)</span>
-                        </div>
-                      </div>
-                      <div class="flex items-center gap-3">
-                        <div class="size-3 rounded-full bg-indigo-400"></div>
-                        <div class="flex flex-col">
-                          <span class="text-xs text-slate-500">Debt</span>
-                          <span class="text-sm font-bold">25% ($13,035)</span>
-                        </div>
-                      </div>
-                      <div class="flex items-center gap-3">
-                        <div class="size-3 rounded-full bg-yellow-500"></div>
-                        <div class="flex flex-col">
-                          <span class="text-xs text-slate-500">Gold</span>
-                          <span class="text-sm font-bold">15% ($7,821)</span>
-                        </div>
-                      </div>
-                      <div class="flex items-center gap-3">
-                        <div class="size-3 rounded-full bg-slate-200 dark:bg-slate-700"></div>
-                        <div class="flex flex-col">
-                          <span class="text-xs text-slate-500">Cash</span>
-                          <span class="text-sm font-bold">0% ($0)</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* Risk Banner Column */}
-                <div class="col-span-4 flex flex-col gap-6">
-                  <div class="flex-1 bg-gradient-to-br from-primary to-indigo-700 p-6 rounded-xl text-white relative overflow-hidden">
-                    <div class="relative z-10">
-                      <h3 class="text-lg font-bold mb-2">Risk Appetite</h3>
-                      <p class="text-sm opacity-80 mb-6 leading-relaxed">
-                        Your current profile is Moderately Aggressive. Optimized for
-                        12-15% annual returns.
-                      </p>
-                      <div class="bg-white/10 backdrop-blur-md rounded-lg p-4 flex items-center justify-between">
-                        <div>
-                          <p class="text-[10px] uppercase font-bold tracking-widest opacity-60">
-                            Risk Score
-                          </p>
-                          <p class="text-xl font-bold">7.4 / 10</p>
-                        </div>
-                        <button class="bg-white text-primary text-xs font-bold px-3 py-1.5 rounded-lg">
-                          Retest
-                        </button>
-                      </div>
-                    </div>
-                    <span class="material-symbols-outlined absolute -bottom-4 -right-4 text-9xl opacity-10">
-                      shield
+              <div className="space-y-2">
+                {pieData.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex justify-between items-center text-[12px]"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      ></span>{" "}
+                      {item.name}
+                    </span>
+                    <span className="font-bold">
+                      {formatINR((item.value / 100) * totalCurrentValue)}
                     </span>
                   </div>
-                </div>
+                ))}
               </div>
-              {/* <!-- Upcoming SIP Strip --> */}
-              <div class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30 rounded-xl p-4 flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                  <div class="bg-white dark:bg-slate-800 size-12 rounded-lg shadow-sm flex items-center justify-center text-indigo-600">
-                    <span class="material-symbols-outlined">event_repeat</span>
-                  </div>
-                  <div>
-                    <p class="text-sm font-bold text-slate-800 dark:text-white">
-                      Next SIP Payment: Sep 05, 2023
-                    </p>
-                    <p class="text-xs text-slate-500">
-                      Scheduled for 4 funds totaling{" "}
-                      <span class="font-bold text-primary">$850.00</span>
-                    </p>
-                  </div>
-                </div>
-                <div class="flex gap-2">
-                  <button class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                    Edit Plan
-                  </button>
-                  <button class="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors">
-                    Skip Next
-                  </button>
-                </div>
-              </div>
-              {/* Widget Grid */}
-              <div class="grid grid-cols-3 gap-6">
-                <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <h4 class="font-bold mb-4 text-sm flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary text-sm">
-                      stars
-                    </span>{" "}
-                    Top Performers
-                  </h4>
-                  <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                      <span class="text-xs font-medium truncate max-w-[120px]">
-                        Vanguard S&amp;P 500
-                      </span>
-                      <span class="text-xs font-bold text-green-600">+22.4%</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                      <span class="text-xs font-medium truncate max-w-[120px]">
-                        Apple Inc (AAPL)
-                      </span>
-                      <span class="text-xs font-bold text-green-600">+18.1%</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                      <span class="text-xs font-medium truncate max-w-[120px]">
-                        Gold Spot (XAU)
-                      </span>
-                      <span class="text-xs font-bold text-green-600">+14.2%</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <h4 class="font-bold mb-4 text-sm flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary text-sm">
-                      warning
-                    </span>{" "}
-                    Underperformers
-                  </h4>
-                  <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                      <span class="text-xs font-medium truncate max-w-[120px]">
-                        Emerging Mkts ETF
-                      </span>
-                      <span class="text-xs font-bold text-red-500">-3.2%</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                      <span class="text-xs font-medium truncate max-w-[120px]">
-                        Real Estate Trust
-                      </span>
-                      <span class="text-xs font-bold text-red-500">-1.5%</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                      <span class="text-xs font-medium truncate max-w-[120px]">
-                        Bond Ladder II
-                      </span>
-                      <span class="text-xs font-bold text-red-500">-0.4%</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center items-center text-center">
-                  <div class="size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-3">
-                    <span class="material-symbols-outlined">rocket_launch</span>
-                  </div>
-                  <h4 class="font-bold text-sm mb-1">New Investment Ideas</h4>
-                  <p class="text-xs text-slate-500 mb-4">
-                    Based on your risk score, explore AI picked stocks.
-                  </p>
-                  <button class="w-full py-2 bg-slate-100 dark:bg-slate-800 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors">
-                    Explore
-                  </button>
-                </div>
-              </div>
-              {/* Recent Transactions Table */}
-              <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <h3 class="font-bold text-slate-800 dark:text-white">
-                    Recent Transactions
-                  </h3>
-                  <button class="text-primary text-xs font-bold hover:underline">
-                    View All History
-                  </button>
-                </div>
-                <div class="overflow-x-auto">
-                  <table class="w-full text-left border-collapse">
-                    <thead>
-                      <tr class="bg-slate-50 dark:bg-slate-800/50">
-                        <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                          Asset / Type
-                        </th>
-                        <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                          Date
-                        </th>
-                        <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                          Amount
-                        </th>
-                        <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                          Status
-                        </th>
-                        <th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase text-right">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td class="px-6 py-4">
-                          <div class="flex items-center gap-3">
-                            <div class="size-8 rounded bg-primary/10 flex items-center justify-center text-primary">
-                              <span class="material-symbols-outlined text-sm">
-                                shopping_cart
-                              </span>
-                            </div>
-                            <div class="flex flex-col">
-                              <span class="text-sm font-bold">Vanguard S&amp;P 500</span>
-                              <span class="text-[10px] text-slate-500">
-                                Buy Order • Equity
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
-                          Aug 28, 2023
-                        </td>
-                        <td class="px-6 py-4 text-sm font-bold">$1,200.00</td>
-                        <td class="px-6 py-4">
-                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                            Completed
-                          </span>
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                          <button class="material-symbols-outlined text-slate-400 hover:text-slate-600">
-                            more_horiz
-                          </button>
-                        </td>
-                      </tr>
-                      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td class="px-6 py-4">
-                          <div class="flex items-center gap-3">
-                            <div class="size-8 rounded bg-primary/10 flex items-center justify-center text-primary">
-                              <span class="material-symbols-outlined text-sm">
-                                shopping_cart
-                              </span>
-                            </div>
-                            <div class="flex flex-col">
-                              <span class="text-sm font-bold">Microsoft Corp (MSFT)</span>
-                              <span class="text-[10px] text-slate-500">
-                                Buy Order • Stock
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
-                          Aug 25, 2023
-                        </td>
-                        <td class="px-6 py-4 text-sm font-bold">$450.00</td>
-                        <td class="px-6 py-4">
-                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                            Completed
-                          </span>
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                          <button class="material-symbols-outlined text-slate-400 hover:text-slate-600">
-                            more_horiz
-                          </button>
-                        </td>
-                      </tr>
-                      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td class="px-6 py-4">
-                          <div class="flex items-center gap-3">
-                            <div class="size-8 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
-                              <span class="material-symbols-outlined text-sm">sell</span>
-                            </div>
-                            <div class="flex flex-col">
-                              <span class="text-sm font-bold">Emerging Markets ETF</span>
-                              <span class="text-[10px] text-slate-500">
-                                Sell Order • Equity
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
-                          Aug 20, 2023
-                        </td>
-                        <td class="px-6 py-4 text-sm font-bold">$2,100.00</td>
-                        <td class="px-6 py-4">
-                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-                            Pending
-                          </span>
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                          <button class="material-symbols-outlined text-slate-400 hover:text-slate-600">
-                            more_horiz
-                          </button>
-                        </td>
-                      </tr>
-                      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td class="px-6 py-4">
-                          <div class="flex items-center gap-3">
-                            <div class="size-8 rounded bg-primary/10 flex items-center justify-center text-primary">
-                              <span class="material-symbols-outlined text-sm">
-                                shopping_cart
-                              </span>
-                            </div>
-                            <div class="flex flex-col">
-                              <span class="text-sm font-bold">iShares Core Debt</span>
-                              <span class="text-[10px] text-slate-500">
-                                Buy Order • Debt
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
-                          Aug 15, 2023
-                        </td>
-                        <td class="px-6 py-4 text-sm font-bold">$800.00</td>
-                        <td class="px-6 py-4">
-                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                            Completed
-                          </span>
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                          <button class="material-symbols-outlined text-slate-400 hover:text-slate-600">
-                            more_horiz
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </main>
+            </>
+          )}
         </div>
       </div>
-    </>
+
+      {/* Risk Banner */}
+      <div
+        className={`p-6 rounded-xl text-white flex items-center justify-between bg-gradient-to-r ${riskBg} relative overflow-hidden`}
+      >
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold mb-1">
+            RISK PROFILE
+          </p>
+          <h3 className="text-xl font-bold">
+            {riskLevel === "High"
+              ? "Moderately Aggressive"
+              : riskLevel === "Low"
+                ? "Conservative"
+                : "Balanced"}
+          </h3>
+          <p className="text-sm text-white/80 mt-1 max-w-md">{riskText}</p>
+        </div>
+        <MdOutlineShield className="text-[48px] text-white/20" />
+      </div>
+
+      {/* Stress Test + Silent Fee Cost Row */}
+      <div className="grid grid-cols-12 gap-6">
+        {/* STRESS TEST CARD */}
+        <div className="col-span-12 lg:col-span-8 bg-surface p-6 rounded-xl border border-border shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <p className="text-[10px] uppercase tracking-widest text-t-secondary font-bold">
+              PORTFOLIO STRESS TEST
+            </p>
+            <MdOutlineWarning className="text-amber-500 text-xl" />
+          </div>
+          {stressData && stressData.scenarios ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Moderate */}
+                <div className="p-4 bg-amber-50 border border-amber-100 rounded-lg">
+                  <p className="text-[12px] font-bold text-amber-900 mb-2">
+                    {stressData.scenarios.moderate?.label || "Moderate Correction (-25%)"}
+                  </p>
+                  <div className="flex items-end justify-between">
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-amber-700 uppercase font-bold">
+                        Projected Value
+                      </p>
+                      <p className="text-xl font-black text-amber-900">
+                        {formatINR(stressData.scenarios.moderate?.portfolioValue || 0)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-slate-400 line-through">
+                        {formatINR(stressData.totalCurrentValue)}
+                      </p>
+                      <p className="text-xs font-bold text-red-500">
+                        -{formatINR(stressData.scenarios.moderate?.estimatedLoss || 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                {/* Severe */}
+                <div className="p-4 bg-orange-50 border border-orange-100 rounded-lg">
+                  <p className="text-[12px] font-bold text-orange-900 mb-2">
+                    {stressData.scenarios.severe?.label || "Severe Crash (-40%)"}
+                  </p>
+                  <div className="flex items-end justify-between">
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-orange-700 uppercase font-bold">
+                        Projected Value
+                      </p>
+                      <p className="text-xl font-black text-orange-900">
+                        {formatINR(stressData.scenarios.severe?.portfolioValue || 0)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-slate-400 line-through">
+                        {formatINR(stressData.totalCurrentValue)}
+                      </p>
+                      <p className="text-xs font-bold text-red-500">
+                        -{formatINR(stressData.scenarios.severe?.estimatedLoss || 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p className="mt-4 text-[10px] text-slate-400 italic">
+                Disclaimer: These scenarios are based on historical index volatility and
+                are not guaranteed projections of future returns.
+              </p>
+            </>
+          ) : (
+            <div className="text-center py-8 text-t-secondary text-sm">
+              Add investments to see stress test analysis.
+            </div>
+          )}
+        </div>
+
+        {/* SILENT FEE COST CARD */}
+        <div className="col-span-12 lg:col-span-4 bg-surface p-6 rounded-xl border border-border shadow-sm">
+          <p className="text-[10px] uppercase tracking-widest text-t-secondary font-bold mb-4">
+            SILENT FEE COST
+          </p>
+          {expenseInfo ? (
+            <div className="space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center relative">
+                  <MdOutlineTrendingDown className="text-slate-400 text-xl" />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-slate-400">
+                    Annual Drain
+                  </p>
+                  <p className="text-lg font-bold text-t-primary">
+                    {formatINR(expenseInfo.annualExpenseCost)}
+                  </p>
+                </div>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                <p className="text-[10px] uppercase font-bold text-t-secondary mb-1">
+                  10-Year Opportunity Cost
+                </p>
+                <p className="text-2xl font-black text-red-500">
+                  {formatINR(expenseInfo.tenYearOpportunityCost)}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-2">
+                  Based on weighted average expense ratio of{" "}
+                  {expenseInfo.weightedExpenseRatio}%
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-t-secondary text-sm">
+              No expense data available.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Grid: Transactions + Right Column (What-If, Goals, Tips) */}
+      <div className="grid grid-cols-12 gap-6">
+        {/* RECENT TRANSACTIONS */}
+        <div className="col-span-12 lg:col-span-8 bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-border flex justify-between items-center">
+            <p className="text-[10px] uppercase tracking-widest text-t-secondary font-bold">
+              RECENT TRANSACTIONS
+            </p>
+            <Link
+              to="/transactions"
+              className="text-[12px] font-bold text-primary hover:underline no-underline"
+            >
+              View All
+            </Link>
+          </div>
+          {transactions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-t-placeholder">
+              <MdOutlineShoppingCart className="text-4xl mb-2 opacity-50" />
+              <span className="text-xs font-bold text-t-secondary">
+                No transactions recorded yet.
+              </span>
+            </div>
+          ) : (
+            <table className="w-full text-left">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Instrument
+                  </th>
+                  <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">
+                    Amount
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {transactions.slice(0, 5).map((tx) => (
+                  <tr key={tx._id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 text-sm text-slate-600">
+                      {new Date(tx.date).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm font-bold text-t-primary truncate max-w-[200px]">
+                        {tx.fundName}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {tx.schemeCode} • {tx.type === "buy" ? "Purchase" : "Redemption"}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-1 rounded uppercase ${tx.type === "buy" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}
+                      >
+                        {tx.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right font-bold text-t-primary">
+                      {formatINR(tx.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* RIGHT COLUMN: Quick What-If + Goal Gaps + Tips */}
+        <div className="col-span-12 lg:col-span-4 space-y-6">
+          {/* QUICK WHAT-IF WIDGET */}
+          <div className="bg-slate-50 p-6 rounded-xl border border-border relative overflow-hidden group">
+            <div className="relative z-10">
+              <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-3">
+                QUICK WHAT-IF
+              </p>
+              {quickWhatIf ? (
+                <p className="text-[13px] leading-relaxed text-slate-700 mb-4">
+                  If you had invested{" "}
+                  <span className="font-bold">{formatINR(quickWhatIf.amount)}</span> in
+                  your best performing fund (
+                  {quickWhatIf.fundName?.split(" ").slice(0, 3).join(" ")}) 1 year ago, it
+                  would be worth{" "}
+                  <span className="text-primary font-bold">
+                    {formatINR(quickWhatIf.currentValue)}
+                  </span>{" "}
+                  today.
+                </p>
+              ) : (
+                <p className="text-[13px] text-slate-500 mb-4">
+                  Add investments to see historical insights.
+                </p>
+              )}
+              <button
+                onClick={() => navigate("/investments")}
+                className="w-full bg-primary text-white py-2 rounded-lg text-sm font-bold hover:bg-primary-hover transition-colors flex items-center justify-center gap-2 border-none cursor-pointer"
+              >
+                Try Simulator <MdOutlineTrendingUp className="text-lg" />
+              </button>
+            </div>
+            <MdOutlineTrendingUp className="absolute -bottom-4 -right-4 text-slate-200 text-8xl opacity-30 select-none group-hover:scale-110 transition-transform" />
+          </div>
+
+          {/* GOAL GAP ALERTS */}
+          <div className="bg-surface p-6 rounded-xl border border-border shadow-sm">
+            <p className="text-[10px] uppercase tracking-widest text-t-secondary font-bold mb-4">
+              FINANCIAL GOALS
+            </p>
+            {goalGaps.length === 0 ? (
+              <div className="text-center py-4 text-t-secondary text-sm">
+                <Link
+                  to="/profile"
+                  className="text-primary font-bold hover:underline no-underline"
+                >
+                  Set your first goal →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {goalGaps.slice(0, 3).map((goal) => (
+                  <div
+                    key={goal._id}
+                    className={`p-3 rounded-lg ${goal.gapStatus === "on_track" ? "bg-slate-50" : "bg-red-50/50 border border-red-100"}`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="text-[12px] font-bold text-t-primary">{goal.name}</p>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight ${
+                          goal.gapStatus === "on_track"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {goal.gapStatus === "on_track" ? "On Track" : "Behind Schedule"}
+                      </span>
+                    </div>
+                    <p
+                      className={`text-[10px] font-medium ${goal.gapStatus === "on_track" ? "text-slate-500" : "text-red-600"}`}
+                    >
+                      {goal.gapStatus === "on_track"
+                        ? goal.gapMessage
+                            ?.replace(/^.*?(\d)/, "$1")
+                            .replace(/At your current.*?,\s*/, "") ||
+                          `Projected to complete ahead of schedule.`
+                        : `Need ${formatINR(goal.extraSIPNeeded)}/month extra to close gap.`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* DIVERSIFICATION TIPS */}
+          <div className="bg-amber-50/50 p-6 rounded-xl border border-amber-100">
+            <div className="flex items-center gap-2 mb-3">
+              <MdOutlineWarning className="text-amber-600 text-xl" />
+              <p className="text-[10px] uppercase tracking-widest text-amber-800 font-bold">
+                DIVERSIFICATION TIPS
+              </p>
+            </div>
+            <ul className="space-y-3">
+              {tips.map((tip, idx) => (
+                <li key={idx} className="text-[12px] text-slate-700 flex gap-2">
+                  <span className="text-amber-500 font-bold">•</span>
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
