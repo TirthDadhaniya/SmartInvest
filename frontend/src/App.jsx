@@ -8,12 +8,14 @@ import ManageFunds from "./pages/ManageFunds";
 import Fund from "./pages/Fund";
 import Transactions from "./pages/Transactions";
 import Profile from "./pages/Profile";
+import AppShell from "./components/AppShell";
 
 const App = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Register />} />
+        <Route path="/" element={<AppShell />} />
+        {/* <Route path="/" element={<Register />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -21,7 +23,7 @@ const App = () => {
         <Route path="/manageFunds" element={<ManageFunds />} />
         <Route path="/fund" element={<Fund />} />
         <Route path="/transactions" element={<Transactions />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile" element={<Profile />} /> */}
       </Routes>
     </Router>
   );
