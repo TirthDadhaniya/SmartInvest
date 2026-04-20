@@ -10,11 +10,13 @@ import {
   MdOutlineAdd,
   MdOutlineNotifications,
   MdOutlineExpandMore,
+  MdOutlinePayments,
 } from "react-icons/md";
+import { NavLink, Outlet } from "react-router-dom";
 
 const AppShell = () => {
   return (
-    <div className="flex min-h-screen bg-base text-t-primary font-display antialiased relative">
+    <div className="flex min-h-screen bg-behind text-t-primary font-display antialiased relative">
       <aside className="w-60 left-0 shrink-0 border-r font-inter border-border bg-surface flex flex-col fixed h-full z-20">
         <div className="p-6 flex items-center gap-3">
           <div className="bg-primary size-8 rounded flex items-center justify-center text-white">
@@ -25,41 +27,42 @@ const AppShell = () => {
           </h1>
         </div>
         <nav className="flex-1 px-4 space-y-1">
-          <a
-            className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary font-medium"
-            href="#"
+          <NavLink
+            to="/dashboard"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg ${isActive ? "bg-primary/10 text-primary font-medium" : "text-slate-600 hover:bg-slate-100 transition-colors"}`
+            }
           >
             <MdOutlineDashboard className="text-lg" />
             <span className="text-sm">Dashboard</span>
-          </a>
-          <a
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600  hover:bg-slate-100 transition-colors"
-            href="#"
+          </NavLink>
+          <NavLink
+            to="/investments"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg ${isActive ? "bg-primary/10 text-primary font-medium" : "text-slate-600 hover:bg-slate-100 transition-colors"}`
+            }
           >
             <MdOutlinePieChart className="text-lg" />
-            <span className="text-sm">Portfolio</span>
-          </a>
-          <a
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600  hover:bg-slate-100  transition-colors"
-            href="#"
+            <span className="text-sm">My Investments</span>
+          </NavLink>
+          <NavLink
+            to="/manageFunds"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg ${isActive ? "bg-primary/10 text-primary font-medium" : "text-slate-600 hover:bg-slate-100 transition-colors"}`
+            }
           >
-            <MdOutlineTrendingUp className="text-lg" />
-            <span className="text-sm">Market</span>
-          </a>
-          <a
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600  hover:bg-slate-100  transition-colors"
-            href="#"
-          >
-            <MdOutlineCalendarToday className="text-lg" />
-            <span className="text-sm">SIPs</span>
-          </a>
-          <a
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600  hover:bg-slate-100  transition-colors"
-            href="#"
+            <MdOutlinePayments className="text-lg" />
+            <span className="text-sm">Manage Funds</span>
+          </NavLink>
+          <NavLink
+            to="/transactions"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg ${isActive ? "bg-primary/10 text-primary font-medium" : "text-slate-600 hover:bg-slate-100 transition-colors"}`
+            }
           >
             <MdOutlineHistory className="text-lg" />
             <span className="text-sm">Transactions</span>
-          </a>
+          </NavLink>
         </nav>
         <div className="p-4 border-t border-slate-200 ">
           <div className="flex items-center gap-3 px-2 py-3">
@@ -79,7 +82,7 @@ const AppShell = () => {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-h-screen transition-all duration-300 ease-out md:ml-[80px] lg:ml-[240px] w-full max-w-[100vw]">
+      <div className="flex-1 flex flex-col min-h-screen transition-all duration-300 ease-out md:ml-[80px] lg:ml-[240px] w-full max-w-[100vw]">
         <header className="font-inter sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-border h-16 flex items-center justify-between px-8">
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-bold">Dashboard</h2>
@@ -115,7 +118,13 @@ const AppShell = () => {
             </div>
           </div>
         </header>
-      </main>
+
+        <main className="flex-1 bg-behind w-full">
+          <div className="mx-auto w-full">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 };
