@@ -15,7 +15,7 @@ import { useNavigate, Link } from "react-router-dom";
 
 const Register = () => {
   return (
-    <div className="bg-base text-t-primary min-h-screen flex flex-col font-inter">
+    <div className="bg-behind text-t-primary min-h-screen flex flex-col font-inter">
       {/* Top Navigation */}
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-border px-6 md:px-10 py-4 bg-surface">
         <div className="flex items-center gap-4 text-primary">
@@ -64,7 +64,7 @@ const Register = () => {
                 <h1 className="text-t-primary text-3xl font-bold leading-tight tracking-tight mb-2">
                   Create your account
                 </h1>
-                <p className="text-t-secondary text-base">
+                <p className="text-t-secondary">
                   Join 50,000+ investors securing their future.
                 </p>
               </div>

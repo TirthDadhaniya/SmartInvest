@@ -16,7 +16,7 @@ import { useNavigate, Link } from "react-router-dom";
 
 const Login = () => {
   return (
-    <div className="bg-base text-t-primary min-h-screen flex flex-col font-display">
+    <div className="bg-behind text-t-primary min-h-screen flex flex-col font-display">
       {/* Top Navigation */}
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-border px-6 md:px-10 py-4 bg-surface">
         <div className="flex items-center gap-4 text-primary">
