@@ -4,7 +4,7 @@
 @theme {
   /* ── Colors ── */
   --color-surface: #ffffff; /*card color that sits above background*/
-  --color-base: #f6f6f8; /*background that goes behind all elements */
+  --color-behind: #f6f6f8; /*background that goes behind all elements */
   --color-top-gradient: #1152d4;
   --color-bottom-gradient: #432dd7;
 
