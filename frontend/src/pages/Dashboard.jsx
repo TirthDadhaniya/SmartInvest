@@ -25,15 +25,11 @@ import {
 import { FaShieldHalved } from "react-icons/fa6";
 
 import Card from "../components/Card";
-import TopNav from "../components/TopNav";
-import Sidebar from "../components/Sidebar";
 
 const Dashboard = () => {
   return (
     <>
-      <Sidebar />
-      <TopNav />
-      <div className="bg-base font-inter p-4 md:p-8 space-y-8 max-w-[1200px] mx-auto w-full animate-in fade-in duration-300">
+      <div className="bg-behind font-inter p-4 md:p-8 space-y-8 mx-auto w-full animate-in fade-in duration-300">
         {/* SIP Reminder Strip */}
         {/* {nextSip && ()} */}
         <div className="bg-primary text-white p-4 rounded-xl flex items-center justify-between shadow-sm">
