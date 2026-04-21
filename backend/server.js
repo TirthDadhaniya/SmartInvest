@@ -11,7 +11,27 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
+// Explicit CORS config: wildcard origin (*) is rejected by browsers when
+// withCredentials:true is used. We must specify the exact frontend origin.
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. curl, Postman, server-to-server)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS policy: origin ${origin} not allowed`));
+      }
+    },
+    credentials: true, // Required so browsers send/receive cookies
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 
