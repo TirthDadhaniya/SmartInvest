@@ -37,3 +37,7 @@ lerna-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+GEMINI.md
+workflow.md
+.github/*
