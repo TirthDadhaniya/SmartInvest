@@ -2,6 +2,33 @@
  * Financial calculation and grading utilities for SmartInvest.
  */
 
+/**
+ * Normalizes a date to UTC midnight (00:00:00.000)
+ */
+const normalizeToDateOnly = (value) => {
+  if (!value) return new Date();
+  const date = new Date(value);
+  date.setUTCHours(0, 0, 0, 0);
+  return date;
+};
+
+/**
+ * Calculates the difference in years between two dates
+ */
+const getYearsBetween = (start, end = new Date()) => {
+  const diff = (new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24 * 365.25);
+  return Math.max(0.1, diff);
+};
+
+/**
+ * Calculates the difference in months between two dates
+ */
+const getMonthsBetween = (start, end = new Date()) => {
+  const s = new Date(start);
+  const e = new Date(end);
+  return Math.max(1, (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()));
+};
+
 // assumptions by category for stress testing
 const STRESS_DROP_MAP = {
   "small cap": 0.4, "mid cap": 0.35, "large cap": 0.25, "flexi cap": 0.3,
@@ -144,6 +171,9 @@ const calculateReportCard = (stats, goals, sips, userRiskPreference) => {
 };
 
 module.exports = {
+  normalizeToDateOnly,
+  getYearsBetween,
+  getMonthsBetween,
   getStressDrop,
   getDefaultExpenseRatio,
   calculateLTCGTax,
