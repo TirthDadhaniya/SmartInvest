@@ -188,6 +188,15 @@ const routeSchemas = {
         ),
     }),
   },
+  analytics: {
+    whatIf: z.object({
+      body: z.object({
+        scheme_code: z.coerce.number().int().positive(),
+        amount: z.coerce.number().positive(),
+        date: isoDateStringSchema,
+      }),
+    }),
+  },
 };
 
 module.exports = {
