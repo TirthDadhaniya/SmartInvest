@@ -1,33 +1,17 @@
 const SIP = require("../models/SIP");
 const { createInvestment } = require("../services/investment.service");
 const { createTransaction } = require("../services/transaction.service");
-
-const normalizeToDateOnly = (value) => {
-  const date = new Date(value);
-  date.setUTCHours(0, 0, 0, 0);
-  return date;
-};
+const { normalizeToDateOnly } = require("../utils/date");
 
 const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }) => {
-  const sip = await SIP.findOne({
-    _id: sipId,
-    userID: userId,
-  });
+  const sip = await SIP.findOne({ _id: sipId, userID: userId });
 
   if (!sip) {
-    return {
-      success: false,
-      statusCode: 404,
-      message: "SIP not found",
-    };
+    return { success: false, statusCode: 404, message: "SIP not found" };
   }
 
   if (sip.status !== "active") {
-    return {
-      success: false,
-      statusCode: 400,
-      message: "SIP is not active",
-    };
+    return { success: false, statusCode: 400, message: "SIP is not active" };
   }
 
   const today = executionDate ? new Date(executionDate) : new Date();
@@ -51,7 +35,7 @@ const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }
     scheme_category: sip.scheme_category,
     investedAmount: sip.monthlyAmount,
     purchaseNAV: currentNAV,
-    purchaseDate: executionDate,
+    purchaseDate: executionDate || today,
     type: "sip",
   });
 
@@ -65,8 +49,10 @@ const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }
     nav: investment.purchaseNAV,
     date: investment.purchaseDate,
   });
+
   const updatedDueDate = new Date(dueDateOnly);
   updatedDueDate.setUTCMonth(updatedDueDate.getUTCMonth() + 1);
+  
   sip.nextDueDate = updatedDueDate;
   sip.lastExecutedDate = today;
   await sip.save();

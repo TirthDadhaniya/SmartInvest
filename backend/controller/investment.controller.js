@@ -1,32 +1,21 @@
 const Investment = require("../models/Investment");
-const Transaction = require("../models/Transaction");
-const { createInvestment } = require("../services/investment.service");
+const { createInvestment, processSell } = require("../services/investment.service");
 const { createTransaction } = require("../services/transaction.service");
 
 // GET /api/investments/
 exports.getInvestments = async (req, res) => {
   try {
-    const investments = await Investment.find({ userID: req.user._id }).sort({ name: 1 });
-
-    res.status(200).json({
-      success: true,
-      data: investments,
-    });
+    const investments = await Investment.find({ userID: req.user._id }).sort({ scheme_name: 1 });
+    res.status(200).json({ success: true, data: investments });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // POST /api/investments/
 exports.createInvestment = async (req, res) => {
   try {
-    const investment = await createInvestment({
-      userID: req.user._id,
-      ...req.body,
-    });
+    const investment = await createInvestment({ userID: req.user._id, ...req.body });
 
     await createTransaction({
       userID: req.user._id,
@@ -38,16 +27,10 @@ exports.createInvestment = async (req, res) => {
       nav: investment.purchaseNAV,
       date: investment.purchaseDate,
     });
-    res.status(201).json({
-      success: true,
-      message: "Investment created successfully",
-      data: investment,
-    });
+
+    res.status(201).json({ success: true, message: "Investment created successfully", data: investment });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -55,102 +38,39 @@ exports.createInvestment = async (req, res) => {
 exports.sellInvestment = async (req, res) => {
   try {
     const { unitsToSell, currentNAV } = req.body;
+    const investment = await Investment.findOne({ _id: req.params.id, userID: req.user._id });
 
-    const investment = await Investment.findOne({
-      _id: req.params.id,
+    if (!investment) return res.status(404).json({ success: false, message: "Investment not found" });
+
+    const result = await processSell(investment, unitsToSell, currentNAV);
+
+    await createTransaction({
       userID: req.user._id,
+      scheme_code: investment.scheme_code,
+      scheme_name: investment.scheme_name,
+      type: "sell",
+      amount: result.sellAmount,
+      units: unitsToSell,
+      nav: currentNAV,
+      date: new Date(),
+      profitLoss: result.profitLoss
     });
 
-    if (!investment) {
-      return res.status(404).json({
-        success: false,
-        message: "Investment not found or not authorized",
-      });
-    }
-
-    if (!unitsToSell || unitsToSell <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Units to sell must be greater than zero",
-      });
-    }
-
-    if (unitsToSell > investment.units) {
-      return res.status(400).json({
-        success: false,
-        message: "Units to sell cannot be greater than available units",
-      });
-    }
-
-    // calculate sell amount
-    const sellAmount = unitsToSell * currentNAV;
-
-    // calculate original invested amount for sold units
-    const originalAmount = unitsToSell * investment.purchaseNAV;
-
-    //calculate profit/loss
-    const profitLoss = sellAmount - originalAmount;
-
-    // calculate remaining units and amount
-    const remainingUnits = investment.units - unitsToSell;
-
-    // update invested amount based on remaining units
-    const remainingAmount = remainingUnits * investment.purchaseNAV;
-
-    // delete investment if all units are sold
-    if (remainingUnits <= 0) {
-      await investment.deleteOne();
-    } else {
-      investment.units = remainingUnits;
-      investment.investedAmount = remainingAmount;
-
-      await investment.save();
-
-      await createTransaction({
-        userID: req.user._id,
-        scheme_code: investment.scheme_code,
-        scheme_name: investment.scheme_name,
-        type: "sell",
-        amount: sellAmount,
-        units: unitsToSell,
-        nav: currentNAV,
-        date: new Date().toISOString(),
-      });
-
-      res.status(200).json({
-        success: true,
-        message: "Investment updated successfully",
-        data: {
-          soldUnits: unitsToSell,
-          sellAmount,
-          profitLoss,
-          remainingUnits,
-          updatedInvestedAmount: remainingUnits > 0 ? remainingAmount : 0,
-        },
-      });
-    }
+    res.status(200).json({
+      success: true,
+      message: "Investment updated successfully",
+      data: result
+    });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // DELETE investment
 exports.deleteInvestment = async (req, res) => {
   try {
-    const investment = await Investment.findOneAndDelete({
-      _id: req.params.id,
-      userID: req.user._id,
-    });
-
-    if (!investment) {
-      return res.status(404).json({
-        success: false,
-        message: "Investment not found or not authorized",
-      });
-    }
+    const investment = await Investment.findOneAndDelete({ _id: req.params.id, userID: req.user._id });
+    if (!investment) return res.status(404).json({ success: false, message: "Investment not found" });
 
     await createTransaction({
       userID: req.user._id,
@@ -160,17 +80,11 @@ exports.deleteInvestment = async (req, res) => {
       amount: investment.investedAmount,
       units: investment.units,
       nav: investment.purchaseNAV,
-      date: new Date().toISOString(),
+      date: new Date(),
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Investment deleted successfully",
-    });
+    res.status(200).json({ success: true, message: "Investment deleted successfully" });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
