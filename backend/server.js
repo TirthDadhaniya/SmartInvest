@@ -41,6 +41,7 @@ app.use("/api/investments", require("./routes/investment.routes"));
 app.use("/api/sips", require("./routes/sip.routes"));
 app.use("/api/transactions", require("./routes/transaction.routes"));
 app.use("/api/goals", require("./routes/goal.routes"));
+app.use("/api/analytics", require("./routes/analytics.routes"));
 
 app.get("/", (req, res) => {
   res.send("Server is running");
