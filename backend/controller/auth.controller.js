@@ -46,6 +46,13 @@ exports.registerUser = async (req, res) => {
         riskPreference: user.riskPreference,
       };
 
+      res.cookie("token", generateToken(user._id), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      });
+
       res.status(201).json({
         success: true,
         data: {
@@ -100,7 +107,7 @@ exports.loginUser = async (req, res) => {
     res.cookie("token", generateToken(user._id), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
@@ -115,7 +122,6 @@ exports.loginUser = async (req, res) => {
       message: "User Logged In",
       data: {
         user: userData,
-        // token: generateToken(user._id),
       },
     });
   } catch (error) {
@@ -205,7 +211,7 @@ exports.logoutUser = async (req, res) => {
     res.clearCookie("token", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
     });
 
     res.status(200).json({
