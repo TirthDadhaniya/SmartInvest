@@ -23,8 +23,25 @@ exports.summary = async (req, res) => {
       return res.status(200).json({
         success: true,
         data: {
-          healthScore: 0,
-          message: "You have no investments yet. Start investing to see your portfolio health score!",
+          financials: {
+            netWorth: "0.00",
+            totalInvested: "0.00",
+            totalProfitLoss: "0.00",
+            totalPLPercentage: "0.00%",
+          },
+          health: {
+            score: 0,
+            metrics: {
+              equityAllocation: "0.00%",
+              weightedExpenseRatio: "0.00%",
+              categoriesFound: [],
+              allocationChart: [],
+            },
+            breakdown: {},
+            tips: ["Add investments to see your portfolio analysis."],
+          },
+          funds: [],
+          message: "You have no investments yet.",
         },
       });
     }
