@@ -1,6 +1,6 @@
 const SIP = require("../models/SIP");
 const { executeSIPInstalment } = require("../services/sip.service");
-const { normalizeToDateOnly } = require("../utils/date");
+const { normalizeToDateOnly } = require("../services/calculation.service");
 
 // GET SIP
 exports.getAllSIPs = async (req, res) => {
@@ -16,8 +16,15 @@ exports.getAllSIPs = async (req, res) => {
 exports.createSIP = async (req, res) => {
   try {
     const {
-      scheme_code, scheme_name, fund_house, scheme_type, scheme_category,
-      monthlyAmount, startDate, expectedReturnRate, durationYears,
+      scheme_code,
+      scheme_name,
+      fund_house,
+      scheme_type,
+      scheme_category,
+      monthlyAmount,
+      startDate,
+      expectedReturnRate,
+      durationYears,
     } = req.body;
 
     if (!scheme_code || !scheme_name || !monthlyAmount || !startDate) {
@@ -27,10 +34,16 @@ exports.createSIP = async (req, res) => {
     const normalizedStartDate = normalizeToDateOnly(startDate);
     const sip = await SIP.create({
       userID: req.user._id,
-      scheme_code, scheme_name, fund_house, scheme_type, scheme_category,
-      monthlyAmount, startDate: normalizedStartDate,
+      scheme_code,
+      scheme_name,
+      fund_house,
+      scheme_type,
+      scheme_category,
+      monthlyAmount,
+      startDate: normalizedStartDate,
       nextDueDate: normalizedStartDate,
-      expectedReturnRate, durationYears,
+      expectedReturnRate,
+      durationYears,
     });
 
     res.status(201).json({ success: true, data: sip });
@@ -46,7 +59,7 @@ exports.updateSIPStatus = async (req, res) => {
     const sip = await SIP.findOneAndUpdate(
       { _id: req.params.id, userID: req.user._id },
       { status },
-      { new: true }
+      { new: true },
     );
     if (!sip) return res.status(404).json({ success: false, message: "SIP not found" });
     res.status(200).json({ success: true, data: sip });
@@ -62,7 +75,7 @@ exports.updateSIP = async (req, res) => {
     const sip = await SIP.findOneAndUpdate(
       { _id: req.params.id, userID: req.user._id },
       { monthlyAmount, durationYears, expectedReturnRate },
-      { new: true }
+      { new: true },
     );
     if (!sip) return res.status(404).json({ success: false, message: "SIP not found" });
     res.status(200).json({ success: true, data: sip });
@@ -85,7 +98,8 @@ exports.deleteSIP = async (req, res) => {
 exports.executeSIPInstalment = async (req, res) => {
   try {
     const { currentNAV } = req.body;
-    if (!currentNAV) return res.status(400).json({ success: false, message: "Current NAV is required" });
+    if (!currentNAV)
+      return res.status(400).json({ success: false, message: "Current NAV is required" });
 
     const result = await executeSIPInstalment({
       sipId: req.params.id,
@@ -94,7 +108,9 @@ exports.executeSIPInstalment = async (req, res) => {
     });
 
     if (!result.success) {
-      return res.status(result.statusCode || 400).json({ success: false, message: result.message });
+      return res
+        .status(result.statusCode || 400)
+        .json({ success: false, message: result.message });
     }
 
     res.status(201).json({ success: true, data: result });

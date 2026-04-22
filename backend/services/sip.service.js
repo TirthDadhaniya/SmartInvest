@@ -1,7 +1,7 @@
 const SIP = require("../models/SIP");
 const { createInvestment } = require("../services/investment.service");
 const { createTransaction } = require("../services/transaction.service");
-const { normalizeToDateOnly } = require("../utils/date");
+const { normalizeToDateOnly } = require("../services/calculation.service");
 
 const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }) => {
   const sip = await SIP.findOne({ _id: sipId, userID: userId });
@@ -52,7 +52,7 @@ const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }
 
   const updatedDueDate = new Date(dueDateOnly);
   updatedDueDate.setUTCMonth(updatedDueDate.getUTCMonth() + 1);
-  
+
   sip.nextDueDate = updatedDueDate;
   sip.lastExecutedDate = today;
   await sip.save();

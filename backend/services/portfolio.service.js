@@ -45,7 +45,6 @@ const getLatestNAVs = async (schemeCodes, includeHistory = false) => {
  * Gets core portfolio statistics for a user.
  */
 const getPortfolioStats = async (userId, options = {}) => {
-  e;
   const investments = await Investment.find({ userID: userId });
 
   if (investments.length === 0) {
