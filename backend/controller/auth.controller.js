@@ -2,25 +2,19 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-/**
- * Generates a JWT token valid for 30 days.
- * @param {string} id - User ID to embed in the token.
- * @returns {string} - Signed JWT.
- */
+// GENERATE Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: "30d",
   });
 };
 
-/**
- * Registers a new user.
- * POST /api/auth/register
- */
+//REGISTER user
 exports.registerUser = async (req, res) => {
   try {
     const { name, email, password, riskPreference } = req.body;
 
+    // Check for all fields
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -28,8 +22,8 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email }).lean();
+    // Check if user already exits
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -41,7 +35,7 @@ exports.registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Create user record
+    // Create user
     const user = await User.create({ name, email, passwordHash, riskPreference });
 
     if (user) {
@@ -52,7 +46,6 @@ exports.registerUser = async (req, res) => {
         riskPreference: user.riskPreference,
       };
 
-      // Set auth cookie
       res.cookie("token", generateToken(user._id), {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -78,14 +71,12 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-/**
- * Authenticates user and sets cookie.
- * POST /api/auth/login
- */
+//LOGIN user
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Check for all fields
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -93,8 +84,9 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    // Find user by email
+    // Check if user exists
     const user = await User.findOne({ email });
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -102,8 +94,9 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    // Verify password match
+    // Check password
     const isMatch = await bcrypt.compare(password, user.passwordHash);
+
     if (!isMatch) {
       return res.status(400).json({
         success: false,
@@ -111,7 +104,6 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    // Set auth cookie
     res.cookie("token", generateToken(user._id), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -123,7 +115,6 @@ exports.loginUser = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
-      riskPreference: user.riskPreference,
     };
 
     res.status(200).json({
@@ -141,16 +132,14 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-/**
- * Gets currently logged in user info.
- * GET /api/auth/me
- */
+//GET user
 exports.getUser = async (req, res) => {
   try {
-    // req.user is attached by the 'protect' middleware
+    const user = req.user;
+
     res.status(200).json({
       success: true,
-      data: req.user,
+      data: user,
     });
   } catch (error) {
     res.status(500).json({
@@ -160,29 +149,28 @@ exports.getUser = async (req, res) => {
   }
 };
 
-/**
- * Updates user profile details.
- * PUT /api/auth/me
- */
+// UPDATE user
 exports.updateUser = async (req, res) => {
   try {
     const { name, email, riskPreference } = req.body;
     const user = await User.findById(req.user._id);
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
+    if (user) {
+      const normalizedEmail =
+        typeof email === "string" ? email.trim().toLowerCase() : undefined;
 
-    // Handle email change logic
-    if (email) {
-      const normalizedEmail = email.trim().toLowerCase();
-      
-      // If user wants to change email
-      if (normalizedEmail !== user.email) {
+      if (normalizedEmail) {
+        if (normalizedEmail === user.email) {
+          return res.status(409).json({
+            success: false,
+            message: "New email must be different from current email",
+          });
+        }
+
         const emailExist = await User.findOne({
           email: normalizedEmail,
           _id: { $ne: user._id },
-        }).lean();
+        });
 
         if (emailExist) {
           return res.status(409).json({
@@ -190,36 +178,34 @@ exports.updateUser = async (req, res) => {
             message: "Email already in use",
           });
         }
-        user.email = normalizedEmail;
       }
+
+      user.name = name || user.name;
+      user.email = normalizedEmail || user.email;
+      user.riskPreference = riskPreference || user.riskPreference;
+
+      const updatedUser = await user.save();
+
+      const userData = {
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        riskPreference: updatedUser.riskPreference,
+      };
+
+      res.status(200).json({
+        success: true,
+        data: { user: userData },
+      });
+    } else {
+      res.status(404).json({ success: false, message: "User not found" });
     }
-
-    user.name = name || user.name;
-    user.riskPreference = riskPreference || user.riskPreference;
-
-    const updatedUser = await user.save();
-
-    const userData = {
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      riskPreference: updatedUser.riskPreference,
-    };
-
-    res.status(200).json({
-      success: true,
-      data: { user: userData },
-    });
   } catch (error) {
-    console.error("[UpdateUser Error]", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-/**
- * Clears authentication cookie.
- * POST /api/auth/logout
- */
+// Logout
 exports.logoutUser = async (req, res) => {
   try {
     res.clearCookie("token", {
