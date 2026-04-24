@@ -11,7 +11,7 @@ export const PortfolioProvider = ({ children }) => {
     totalCurrentValue: 0,
     totalInvested: 0,
     totalProfitLoss: 0,
-    totalReturnsPercent: 0,
+    totalReturnPercent: 0,
     rawData: null,
     loading: false,
     error: null
@@ -23,7 +23,7 @@ export const PortfolioProvider = ({ children }) => {
         totalCurrentValue: 0,
         totalInvested: 0,
         totalProfitLoss: 0,
-        totalReturnsPercent: 0,
+        totalReturnPercent: 0,
         rawData: null,
         loading: false,
         error: null
@@ -38,11 +38,19 @@ export const PortfolioProvider = ({ children }) => {
       // Adapted to new SmartInvest backend response shape
       const payload = res.data.data; 
 
-      if (!payload || !payload.financials) {
+      if (!payload) {
         throw new Error("Invalid portfolio data received");
       }
 
-      const totalInvested = parseFloat(payload.financials.totalInvested) || 0;
+      // If financials is missing, it's an empty portfolio
+      const financials = payload.financials || {
+        totalInvested: 0,
+        netWorth: 0,
+        totalProfitLoss: 0,
+        totalPLPercentage: 0
+      };
+
+      const totalInvested = parseFloat(financials.totalInvested) || 0;
       const weightedExpRatio = parseFloat(payload.health?.metrics?.weightedExpenseRatio) || 0;
 
       // Mocking 10-year opportunity cost roughly based on annual drain
@@ -81,13 +89,22 @@ export const PortfolioProvider = ({ children }) => {
         totalCurrentValue: mappedData.totalCurrentValue,
         totalInvested: mappedData.totalInvested,
         totalProfitLoss: mappedData.totalProfitLoss,
-        totalReturnsPercent: mappedData.totalReturnPercent,
+        totalReturnPercent: mappedData.totalReturnPercent,
         rawData: mappedData,
         loading: false,
         error: null
       });
     } catch (err) {
-      setPortfolioData(prev => ({ ...prev, loading: false, error: 'Failed to fetch portfolio' }));
+      console.error("Portfolio fetch error:", err);
+      const message = err.response?.status === 401 
+        ? "Session expired. Please login again." 
+        : (err.response?.data?.message || "Failed to fetch portfolio summary.");
+        
+      setPortfolioData(prev => ({ 
+        ...prev, 
+        loading: false, 
+        error: message 
+      }));
     }
   };
 
