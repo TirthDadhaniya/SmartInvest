@@ -1,17 +1,26 @@
 const Goal = require("../models/Goal");
 const portfolioService = require("../services/portfolio.service");
 
-// GET Goals
+/**
+ * Retrieves all goals for the user.
+ * GET /api/goals
+ */
 exports.getGoals = async (req, res) => {
   try {
-    const goals = await Goal.find({ userID: req.user._id }).sort({ name: 1 });
+    const goals = await Goal.find({ userID: req.user._id })
+      .sort({ name: 1 })
+      .lean();
+    
     res.status(200).json({ success: true, data: goals });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error fetching goals" });
   }
 };
 
-// CREATE Goal
+/**
+ * Creates a new financial goal.
+ * POST /api/goals
+ */
 exports.createGoal = async (req, res) => {
   try {
     const { name, targetAmount, targetDate } = req.body;
@@ -25,7 +34,10 @@ exports.createGoal = async (req, res) => {
   }
 };
 
-// EDIT Goal
+/**
+ * Updates an existing goal.
+ * PUT /api/goals/:id
+ */
 exports.updateGoal = async (req, res) => {
   try {
     const { name, targetAmount, targetDate } = req.body;
@@ -42,7 +54,10 @@ exports.updateGoal = async (req, res) => {
   }
 };
 
-// DELETE Goal
+/**
+ * Permanently deletes a goal.
+ * DELETE /api/goals/:id
+ */
 exports.deleteGoal = async (req, res) => {
   try {
     const goal = await Goal.findOneAndDelete({ _id: req.params.id, userID: req.user._id });
@@ -53,10 +68,13 @@ exports.deleteGoal = async (req, res) => {
   }
 };
 
-// GET Goal Progress
+/**
+ * Calculates real-time progress for a specific goal based on portfolio performance.
+ * GET /api/goals/:id/progress
+ */
 exports.getGoalProgress = async (req, res) => {
   try {
-    const goal = await Goal.findOne({ _id: req.params.id, userID: req.user._id });
+    const goal = await Goal.findOne({ _id: req.params.id, userID: req.user._id }).lean();
     if (!goal) return res.status(404).json({ success: false, message: "Goal not found" });
 
     const { totalInvested, totalCurrentValue, earliestInvestmentDate } = 
@@ -65,11 +83,15 @@ exports.getGoalProgress = async (req, res) => {
     if (totalInvested === 0) {
       return res.status(200).json({
         success: true,
-        data: { progressPercent: 0, currentValue: 0, message: "Add investments to track progress." }
+        data: { 
+          progressPercent: 0, 
+          currentValue: 0, 
+          message: "Add investments to track progress." 
+        }
       });
     }
 
-    // 1. Calculate returns (CAGR)
+    // 1. Calculate historical returns (CAGR)
     const now = new Date();
     const holdingYears = Math.max(0.1, (now - earliestInvestmentDate) / (1000 * 60 * 60 * 24 * 365.25));
     const annualReturn = Math.max(0.05, Math.pow(totalCurrentValue / totalInvested, 1 / holdingYears) - 1);
@@ -90,7 +112,7 @@ exports.getGoalProgress = async (req, res) => {
       ? (gap * monthlyRate) / ((Math.pow(1 + monthlyRate, monthsRemaining) - 1) * (1 + monthlyRate))
       : 0;
 
-    // 5. Status Message
+    // 5. Status Message Generation
     let gapStatus = gap <= 0 ? "on_track" : "behind";
     let gapMessage = gap <= 0 
       ? "You are on track to reach this goal!" 
@@ -111,7 +133,7 @@ exports.getGoalProgress = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error("[GetGoalProgress Error]", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
