@@ -10,16 +10,13 @@ import {
   MdHistory,
   MdPerson,
   MdOutlineAccountBalanceWallet,
-  MdOutlineTrendingUp,
-  MdOutlineCalendarToday,
   MdOutlineSettings,
   MdClose,
   MdMenu,
-  MdAdd,
   MdOutlineNotifications,
-  MdOutlineExpandMore,
   MdOutlinePerson,
   MdOutlineLogout,
+  MdDone,
 } from "react-icons/md";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
@@ -32,13 +29,27 @@ const AppShell = () => {
   const { user, logout } = useContext(AuthContext);
   const {
     totalCurrentValue,
-    totalReturnsPercent,
+    totalReturnPercent,
     loading: portLoading,
   } = useContext(PortfolioContext);
 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isNotifOpen, setNotifOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      title: "SIP Reminder",
+      message: "Your SIP for Parag Parikh Flexi Cap is due in 3 days.",
+      isRead: false,
+    },
+    {
+      id: 2,
+      title: "New Feature",
+      message: "Check out your new Portfolio Stress Test in the Analytics tab!",
+      isRead: false,
+    },
+  ]);
 
   const notifRef = useRef(null);
   const profileRef = useRef(null);
@@ -59,7 +70,8 @@ const AppShell = () => {
 
   // Close mobile sidebar on route change
   useEffect(() => {
-    setSidebarOpen(false);
+    const timer = setTimeout(() => setSidebarOpen(false), 0);
+    return () => clearTimeout(timer);
   }, [location.pathname]);
 
   const navItems = [
@@ -92,13 +104,45 @@ const AppShell = () => {
 
   const getPageTitle = () => {
     const item = navItems.find((i) => i.path === location.pathname);
-    return item ? item.label : "SmartInvest";
+    if (item) return item.label;
+
+    // Handle dynamic routes
+    if (location.pathname.startsWith("/fund/")) return "Fund Details";
+    if (location.pathname.startsWith("/profile/")) return "Profile Settings";
+    
+    return "SmartInvest";
+  };
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const markNotificationAsRead = (notificationId) => {
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === notificationId
+          ? { ...notification, isRead: true }
+          : notification,
+      ),
+    );
+  };
+
+  const dismissNotification = (notificationId) => {
+    setNotifications((prev) =>
+      prev.filter((notification) => notification.id !== notificationId),
+    );
+  };
+
+  const markAllNotificationsAsRead = () => {
+    setNotifications((prev) =>
+      prev.map((notification) => ({ ...notification, isRead: true })),
+    );
   };
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
+
+  const MdOutlinePersonIcon = MdPerson;
 
   return (
     <div className="flex h-screen bg-behind font-inter overflow-hidden">
@@ -245,10 +289,10 @@ const AppShell = () => {
                   Total Returns
                 </p>
                 <p
-                  className={`text-sm font-black ${totalReturnsPercent >= 0 ? "text-positive" : "text-negative"} ${portLoading ? "animate-pulse opacity-50" : ""}`}
+                  className={`text-sm font-black ${totalReturnPercent >= 0 ? "text-positive" : "text-negative"} ${portLoading ? "animate-pulse opacity-50" : ""}`}
                 >
-                  {totalReturnsPercent > 0 ? "+" : ""}
-                  {parseFloat(totalReturnsPercent).toFixed(2)}%
+                  {totalReturnPercent >= 0 ? "+" : ""}
+                  {parseFloat(totalReturnPercent).toFixed(2)}%
                 </p>
               </div>
             </div>
@@ -261,30 +305,77 @@ const AppShell = () => {
                   className="p-2.5 text-t-secondary hover:bg-slate-50 hover:text-primary rounded-xl transition-all border-none bg-transparent cursor-pointer relative"
                 >
                   <MdOutlineNotifications size={22} />
-                  <span className="absolute top-2 right-2.5 size-2 bg-primary rounded-full border-2 border-surface" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-2 right-2.5 size-2 bg-primary rounded-full border-2 border-surface" />
+                  )}
                 </button>
 
                 {isNotifOpen && (
                   <div className="absolute right-0 mt-3 w-80 bg-surface rounded-2xl shadow-2xl border border-border z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
                     <div className="p-4 border-b border-border flex justify-between items-center">
                       <span className="font-bold text-sm">Notifications</span>
-                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
-                        2 New
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {unreadCount > 0 && (
+                          <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
+                            {unreadCount} New
+                          </span>
+                        )}
+                        {notifications.length > 0 && (
+                          <button
+                            onClick={markAllNotificationsAsRead}
+                            className="text-[10px] px-2 py-1 rounded-md font-bold text-primary hover:bg-primary/10 transition-colors border-none bg-transparent cursor-pointer"
+                          >
+                            MARK ALL AS READ
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="max-h-64 overflow-y-auto">
-                      <div className="p-4 hover:bg-slate-50 border-b border-slate-50 cursor-pointer transition-colors">
-                        <p className="text-xs font-bold text-t-primary">SIP Reminder</p>
-                        <p className="text-[11px] text-t-secondary mt-1">
-                          Your SIP for Parag Parikh Flexi Cap is due in 3 days.
-                        </p>
-                      </div>
-                      <div className="p-4 hover:bg-slate-50 cursor-pointer transition-colors">
-                        <p className="text-xs font-bold text-t-primary">New Feature</p>
-                        <p className="text-[11px] text-t-secondary mt-1">
-                          Check out your new Portfolio Stress Test in the Analytics tab!
-                        </p>
-                      </div>
+                      {notifications.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-t-secondary">
+                          You are all caught up.
+                        </div>
+                      ) : (
+                        notifications.map((notification, index) => (
+                          <div
+                            key={notification.id}
+                            className={`p-4 hover:bg-slate-50 transition-colors ${index !== notifications.length - 1 ? "border-b border-slate-50" : ""}`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-bold text-t-primary">
+                                  {notification.title}
+                                </p>
+                                <p className="text-[11px] text-t-secondary mt-1">
+                                  {notification.message}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {!notification.isRead && (
+                                  <button
+                                    onClick={() =>
+                                      markNotificationAsRead(notification.id)
+                                    }
+                                    aria-label="Mark as read"
+                                    title="Mark as read"
+                                    className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors border-none bg-transparent cursor-pointer"
+                                  >
+                                    <MdDone size={16} />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => dismissNotification(notification.id)}
+                                  aria-label="Dismiss notification"
+                                  title="Dismiss notification"
+                                  className="p-1.5 rounded-md text-t-secondary hover:bg-slate-100 transition-colors border-none bg-transparent cursor-pointer"
+                                >
+                                  <MdClose size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
