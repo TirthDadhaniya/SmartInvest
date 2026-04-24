@@ -16,7 +16,7 @@ const createInvestment = async (data) => {
   } = data;
 
   if (!scheme_code || !scheme_name || !scheme_category || !investedAmount || !purchaseNAV || !purchaseDate) {
-    throw new Error("Missing required fields for investment");
+    return { error: "Missing required fields for investment", statusCode: 400 };
   }
 
   const units = investedAmount / purchaseNAV;
@@ -41,11 +41,11 @@ const createInvestment = async (data) => {
 
 const processSell = async (investment, unitsToSell, currentNAV) => {
   if (!unitsToSell || unitsToSell <= 0) {
-    throw new Error("Units to sell must be greater than zero");
+    return { error: "Units to sell must be greater than zero", statusCode: 400 };
   }
 
   if (unitsToSell > investment.units) {
-    throw new Error("Units to sell cannot be greater than available units");
+    return { error: "Units to sell cannot be greater than available units", statusCode: 400 };
   }
 
   const sellAmount = unitsToSell * currentNAV;
