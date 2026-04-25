@@ -1,4 +1,12 @@
+/**
+ * Request Validation Schemas
+ * ──────────────────────────
+ * Centralized Zod schemas for all API routes.
+ * Ensures data integrity, correct types, and provides meaningful error messages.
+ */
 const { z } = require("zod");
+
+/* ── Common Schemas ── */
 
 const objectIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid id format");
 
@@ -17,19 +25,21 @@ const passwordSchema = z
   .regex(/[a-z]/, "Password must contain at least one lowercase letter")
   .regex(/[0-9]/, "Password must contain at least one number");
 
+/* ── Route Schemas ── */
+
 const routeSchemas = {
   auth: {
     register: z.object({
       body: z.object({
         name: z.string().trim().min(1, "Name is required"),
-        email: z.email("Invalid email").transform((value) => value.trim().toLowerCase()),
+        email: z.string().email("Invalid email").transform((value) => value.trim().toLowerCase()),
         password: passwordSchema,
         riskPreference: riskPreferenceSchema.optional(),
       }),
     }),
     login: z.object({
       body: z.object({
-        email: z.email("Invalid email").transform((value) => value.trim().toLowerCase()),
+        email: z.string().email("Invalid email").transform((value) => value.trim().toLowerCase()),
         password: z.string().min(1, "Password is required"),
       }),
     }),
@@ -38,6 +48,7 @@ const routeSchemas = {
         .object({
           name: z.string().trim().min(1, "Name cannot be empty").optional(),
           email: z
+            .string()
             .email("Invalid email")
             .transform((value) => value.trim().toLowerCase())
             .optional(),
@@ -48,6 +59,7 @@ const routeSchemas = {
         }),
     }),
   },
+
   investment: {
     create: z.object({
       body: z.object({
@@ -58,7 +70,7 @@ const routeSchemas = {
         scheme_category: z.string().trim().min(1, "Scheme category is required"),
         subCategory: z.string().trim().optional(),
         investedAmount: z.coerce.number().positive("Invested amount must be positive"),
-        units: z.coerce.number().positive("Units must be positive"),
+        units: z.coerce.number().positive("Units must be positive").optional(),
         purchaseNAV: z.coerce.number().positive("Purchase NAV must be positive"),
         purchaseDate: isoDateStringSchema,
         expenseRatio: z.coerce
@@ -76,6 +88,18 @@ const routeSchemas = {
       body: z.object({
         unitsToSell: z.coerce.number().positive("Units to sell must be positive"),
         currentNAV: z.coerce.number().positive("Current NAV must be positive"),
+        sellDate: isoDateStringSchema.optional(),
+      }),
+    }),
+    buyMore: z.object({
+      params: z.object({
+        id: objectIdSchema,
+      }),
+      body: z.object({
+        investedAmount: z.coerce.number().positive("Invested amount must be positive"),
+        purchaseNAV: z.coerce.number().positive("Purchase NAV must be positive"),
+        purchaseDate: isoDateStringSchema,
+        units: z.coerce.number().positive("Units must be positive").optional(),
       }),
     }),
     delete: z.object({
@@ -84,6 +108,7 @@ const routeSchemas = {
       }),
     }),
   },
+
   goal: {
     create: z.object({
       body: z.object({
@@ -108,6 +133,7 @@ const routeSchemas = {
       }),
     }),
   },
+
   sip: {
     create: z.object({
       body: z.object({
@@ -164,6 +190,7 @@ const routeSchemas = {
       }),
     }),
   },
+
   transaction: {
     getTransactions: z.object({
       query: z
@@ -178,7 +205,6 @@ const routeSchemas = {
             if (!query.from || !query.to) {
               return true;
             }
-
             return new Date(query.from) <= new Date(query.to);
           },
           {
@@ -188,6 +214,7 @@ const routeSchemas = {
         ),
     }),
   },
+
   analytics: {
     whatIf: z.object({
       body: z.object({
