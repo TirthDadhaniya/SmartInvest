@@ -1,12 +1,29 @@
+/**
+ * SIP Model
+ * ─────────
+ * Tracks systematic investment plans for a user.
+ * 
+ * Key design decisions:
+ *  - `nextDueDate` is tracked to identify when an SIP needs to be manually or
+ *    automatically executed.
+ *  - `status` allows pausing an SIP without deleting its configuration.
+ *
+ * Indexes:
+ *  - { userID: 1, scheme_code: 1 } → lookup specific SIPs
+ *  - { userID: 1, nextDueDate: 1 } → efficient querying of due SIPs
+ */
 const mongoose = require("mongoose");
 
 const sipSchema = new mongoose.Schema(
   {
+    /* ── Ownership ── */
     userID: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
+
+    /* ── Scheme Details ── */
     scheme_code: {
       type: Number,
       required: true,
@@ -25,6 +42,8 @@ const sipSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
+    /* ── SIP Configuration ── */
     monthlyAmount: {
       type: Number,
       required: true,
@@ -48,6 +67,8 @@ const sipSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+
+    /* ── State ── */
     status: {
       type: String,
       enum: ["active", "paused", "stopped"],
@@ -57,13 +78,14 @@ const sipSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    // goalId: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "Goal",
-    //   default: null,
-    // },
   },
   { timestamps: true },
 );
+
+// ─── Indexes ─────────────────────────────────────────────────────────────
+// Compound index: allows fast lookup of user's SIP in a specific scheme.
+sipSchema.index({ userID: 1, scheme_code: 1 });
+// Efficiently find SIPs that are due for execution for the user.
+sipSchema.index({ userID: 1, nextDueDate: 1 });
 
 module.exports = mongoose.model("SIP", sipSchema);
