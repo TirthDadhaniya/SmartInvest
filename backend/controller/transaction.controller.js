@@ -1,7 +1,10 @@
 const Transaction = require("../models/Transaction");
-const { createTransaction } = require("../services/transaction.service");
 
-// GET Transaction
+/**
+ * Retrieves a filtered list of transactions for the user.
+ * GET /api/transactions
+ * Query Params: type, scheme_code, from (date), to (date)
+ */
 exports.getTransactions = async (req, res) => {
   try {
     const { type, scheme_code, from, to } = req.query;
@@ -26,51 +29,20 @@ exports.getTransactions = async (req, res) => {
       }
     }
 
-    const transactions = await Transaction.find(filter).sort({ date: -1 });
+    // Use .lean() for faster performance as we don't need Mongoose model methods here
+    const transactions = await Transaction.find(filter)
+      .sort({ date: -1 })
+      .lean();
+
     res.status(200).json({
       success: true,
       data: transactions,
     });
   } catch (error) {
+    console.error("[GetTransactions Error]", error);
     res.status(500).json({
       success: false,
       message: "Error fetching transactions",
     });
   }
 };
-
-// CREATE Transaction
-// exports.createTransaction = async (req, res) => {
-//   try {
-//     const { scheme_code, scheme_name, type, amount, units, nav, date, profitLoss } =
-//       req.body;
-
-//     if (!scheme_code || !sceheme_name || !type || !amount || !units || !nav || !date) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Required fields are missing",
-//       });
-//     }
-
-//     const transaction = await Transaction.create({
-//       userID: req.user._id,
-//       scheme_code,
-//       scheme_name,
-//       type,
-//       amount,
-//       units,
-//       nav,
-//       date,
-//       profitLoss,
-//     });
-//     res.status(201).json({
-//       success: true,
-//       data: transaction,
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: "Error creating transaction",
-//     });
-//   }
-// };

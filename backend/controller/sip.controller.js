@@ -2,17 +2,26 @@ const SIP = require("../models/SIP");
 const { executeSIPInstalment } = require("../services/sip.service");
 const { normalizeToDateOnly } = require("../services/calculation.service");
 
-// GET SIP
+/**
+ * Retrieves all SIPs for the logged-in user.
+ * GET /api/sips
+ */
 exports.getAllSIPs = async (req, res) => {
   try {
-    const sips = await SIP.find({ userID: req.user._id }).sort({ scheme_name: 1 });
+    const sips = await SIP.find({ userID: req.user._id })
+      .sort({ scheme_name: 1 })
+      .lean();
+    
     res.status(200).json({ success: true, data: sips });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// CREATE SIP
+/**
+ * Registers a new systematic investment plan.
+ * POST /api/sips
+ */
 exports.createSIP = async (req, res) => {
   try {
     const {
@@ -32,6 +41,7 @@ exports.createSIP = async (req, res) => {
     }
 
     const normalizedStartDate = normalizeToDateOnly(startDate);
+    
     const sip = await SIP.create({
       userID: req.user._id,
       scheme_code,
@@ -52,7 +62,10 @@ exports.createSIP = async (req, res) => {
   }
 };
 
-// UPDATE Status of SIP
+/**
+ * Updates the lifecycle status of an SIP.
+ * PUT /api/sips/:id/status
+ */
 exports.updateSIPStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -61,6 +74,7 @@ exports.updateSIPStatus = async (req, res) => {
       { status },
       { new: true },
     );
+    
     if (!sip) return res.status(404).json({ success: false, message: "SIP not found" });
     res.status(200).json({ success: true, data: sip });
   } catch (error) {
@@ -68,7 +82,10 @@ exports.updateSIPStatus = async (req, res) => {
   }
 };
 
-// UPDATE SIP
+/**
+ * Updates SIP configuration details.
+ * PUT /api/sips/:id
+ */
 exports.updateSIP = async (req, res) => {
   try {
     const { monthlyAmount, durationYears, expectedReturnRate } = req.body;
@@ -77,6 +94,7 @@ exports.updateSIP = async (req, res) => {
       { monthlyAmount, durationYears, expectedReturnRate },
       { new: true },
     );
+    
     if (!sip) return res.status(404).json({ success: false, message: "SIP not found" });
     res.status(200).json({ success: true, data: sip });
   } catch (error) {
@@ -84,7 +102,10 @@ exports.updateSIP = async (req, res) => {
   }
 };
 
-// DELETE SIP
+/**
+ * Permanently deletes an SIP configuration.
+ * DELETE /api/sips/:id
+ */
 exports.deleteSIP = async (req, res) => {
   try {
     const sip = await SIP.findOneAndDelete({ _id: req.params.id, userID: req.user._id });
@@ -95,11 +116,17 @@ exports.deleteSIP = async (req, res) => {
   }
 };
 
+/**
+ * Executes a manual SIP instalment.
+ * Creates an investment record and a transaction entry.
+ * POST /api/sips/:id/execute
+ */
 exports.executeSIPInstalment = async (req, res) => {
   try {
     const { currentNAV } = req.body;
-    if (!currentNAV)
+    if (!currentNAV) {
       return res.status(400).json({ success: false, message: "Current NAV is required" });
+    }
 
     const result = await executeSIPInstalment({
       sipId: req.params.id,
@@ -115,6 +142,7 @@ exports.executeSIPInstalment = async (req, res) => {
 
     res.status(201).json({ success: true, data: result });
   } catch (error) {
+    console.error("[ExecuteSIP Error]", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
