@@ -13,6 +13,12 @@ router.post(
   investmentController.createInvestment,
 );
 router.post(
+  "/:id/buy",
+  protect,
+  validate(routeSchemas.investment.buyMore),
+  investmentController.buyMoreInvestment,
+);
+router.post(
   "/:id/sell",
   protect,
   validate(routeSchemas.investment.sell),
