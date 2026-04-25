@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   MdOutlineDashboard,
   MdDashboard,
@@ -17,11 +17,11 @@ import {
   MdOutlinePerson,
   MdOutlineLogout,
   MdDone,
-} from "react-icons/md";
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { AuthContext } from "../context/AuthContext";
-import { PortfolioContext } from "../context/PortfolioContext";
-import { formatINR } from "../utils/formatters";
+} from 'react-icons/md';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
+import { PortfolioContext } from '../context/PortfolioContext';
+import { formatINR } from '../utils/formatters';
 
 const AppShell = () => {
   const location = useLocation();
@@ -31,32 +31,34 @@ const AppShell = () => {
     totalCurrentValue,
     totalReturnPercent,
     loading: portLoading,
+    rawData,
+    notifications: portNotifications,
   } = useContext(PortfolioContext);
 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isNotifOpen, setNotifOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "SIP Reminder",
-      message: "Your SIP for Parag Parikh Flexi Cap is due in 3 days.",
-      isRead: false,
-    },
-    {
-      id: 2,
-      title: "New Feature",
-      message: "Check out your new Portfolio Stress Test in the Analytics tab!",
-      isRead: false,
-    },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+
+  // TASK 5: Sync context notifications to local state
+  useEffect(() => {
+    if (portNotifications && portNotifications.length > 0) {
+      setNotifications(prev => {
+        // Only add if not already present by ID
+        const existingIds = new Set(prev.map(n => n.id));
+        const newNotifs = portNotifications.filter(n => !existingIds.has(n.id));
+        if (newNotifs.length === 0) return prev;
+        return [...newNotifs, ...prev];
+      });
+    }
+  }, [portNotifications]);
 
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handleClickOutside = event => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
         setNotifOpen(false);
       }
@@ -64,8 +66,8 @@ const AppShell = () => {
         setProfileOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Close mobile sidebar on route change
@@ -74,90 +76,129 @@ const AppShell = () => {
     return () => clearTimeout(timer);
   }, [location.pathname]);
 
+  useEffect(() => {
+    const tips = rawData?.tips || [];
+    const nextNotifications = [
+      {
+        id: 'health-score',
+        title: 'Portfolio Health',
+        message: `Current health score: ${rawData?.healthScore || 0}/100`,
+        isRead: false,
+      },
+      {
+        id: 'returns',
+        title: 'Return Snapshot',
+        message: `Overall return is ${Number(totalReturnPercent || 0).toFixed(2)}% on net worth ${formatINR(totalCurrentValue || 0)}.`,
+        isRead: false,
+      },
+      ...tips.slice(0, 2).map((tip, idx) => ({
+        id: `tip-${idx}`,
+        title: 'Portfolio Tip',
+        message: tip,
+        isRead: false,
+      })),
+    ];
+
+    setNotifications(nextNotifications);
+  }, [rawData, totalCurrentValue, totalReturnPercent]);
+
+  // Sidebar path and icons
   const navItems = [
     {
-      path: "/dashboard",
-      label: "Dashboard",
+      path: '/dashboard',
+      label: 'Dashboard',
       icon: MdOutlineDashboard,
       activeIcon: MdDashboard,
     },
     {
-      path: "/investments",
-      label: "My Investments",
+      path: '/investments',
+      label: 'My Investments',
       icon: MdOutlinePieChart,
       activeIcon: MdPieChart,
     },
     {
-      path: "/manageFunds",
-      label: "Manage Funds",
+      path: '/manageFunds',
+      label: 'Manage Funds',
       icon: MdOutlinePayments,
       activeIcon: MdPayments,
     },
     {
-      path: "/transactions",
-      label: "Transactions",
+      path: '/transactions',
+      label: 'Transactions',
       icon: MdOutlineHistory,
       activeIcon: MdHistory,
     },
-    { path: "/profile", label: "Profile", icon: MdOutlinePerson, activeIcon: MdPerson },
+    { path: '/profile', label: 'Profile', icon: MdOutlinePerson, activeIcon: MdPerson },
   ];
 
   const getPageTitle = () => {
-    const item = navItems.find((i) => i.path === location.pathname);
+    const item = navItems.find(i => i.path === location.pathname);
     if (item) return item.label;
 
     // Handle dynamic routes
-    if (location.pathname.startsWith("/fund/")) return "Fund Details";
-    if (location.pathname.startsWith("/profile/")) return "Profile Settings";
-    
-    return "SmartInvest";
+    if (location.pathname.startsWith('/fund/')) return 'Fund Details';
+    if (location.pathname.startsWith('/profile/')) return 'Profile Settings';
+
+    return 'SmartInvest';
   };
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const getPageSubtitle = () => {
+    const subTitles = {
+      '/dashboard': 'Overview of your investment portfolio and health',
+      '/investments': 'Track performance and analyze your holdings',
+      '/manageFunds': 'Add new investments and manage your active SIPs',
+      '/transactions': 'History of all your buy and sell activities',
+      '/profile': 'Manage your goals, risk profile, and account settings',
+    };
 
-  const markNotificationAsRead = (notificationId) => {
-    setNotifications((prev) =>
-      prev.map((notification) =>
-        notification.id === notificationId
-          ? { ...notification, isRead: true }
-          : notification,
-      ),
+    if (subTitles[location.pathname]) return subTitles[location.pathname];
+    if (location.pathname.startsWith('/fund/'))
+      return 'Detailed analysis and historical performance';
+
+    return 'Your personal wealth manager';
+  };
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const markNotificationAsRead = notificationId => {
+    setNotifications(prev =>
+      prev.map(notification =>
+        notification.id === notificationId ? { ...notification, isRead: true } : notification
+      )
     );
   };
 
-  const dismissNotification = (notificationId) => {
-    setNotifications((prev) =>
-      prev.filter((notification) => notification.id !== notificationId),
-    );
+  const dismissNotification = notificationId => {
+    setNotifications(prev => prev.filter(notification => notification.id !== notificationId));
   };
 
   const markAllNotificationsAsRead = () => {
-    setNotifications((prev) =>
-      prev.map((notification) => ({ ...notification, isRead: true })),
-    );
+    setNotifications(prev => prev.map(notification => ({ ...notification, isRead: true })));
   };
 
+  // Logout function
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate('/login');
   };
 
   const MdOutlinePersonIcon = MdPerson;
 
   return (
     <div className="flex h-screen bg-behind font-inter overflow-hidden">
-      {/* Sidebar - Desktop */}
+      {/* qfq */}
       <aside className="hidden lg:flex flex-col w-64 bg-surface border-r border-border shrink-0">
         {/* Logo & Branding */}
-        <div className="p-6 flex items-center gap-3 text-primary">
+        <Link to="/dashboard" className="p-6 flex items-center gap-3 text-primary no-underline">
           <div className="size-9 flex items-center justify-center bg-primary/10 rounded-lg">
-            <MdOutlineAccountBalanceWallet size={24} />
+            <MdOutlineAccountBalanceWallet size={26} />
           </div>
-          <h1 className="text-t-primary text-xl font-bold tracking-tight">SmartInvest</h1>
-        </div>
+          <h1 className="text-t-primary text-2xl font-bold tracking-tight">SmartInvest</h1>
+        </Link>
 
+        {/* Navigation Links */}
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          {navItems.map((item) => (
+          {navItems.map(item => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -165,8 +206,8 @@ const AppShell = () => {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm group ${
                   isActive
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-t-secondary hover:bg-slate-100 hover:text-t-primary"
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-t-secondary hover:bg-slate-100 hover:text-t-primary'
                 }`
               }
             >
@@ -175,9 +216,7 @@ const AppShell = () => {
                 return (
                   <>
                     <IconComponent className="text-xl shrink-0 group-hover:scale-110 transition-transform" />
-                    <span className="block md:hidden lg:block whitespace-nowrap">
-                      {item.label}
-                    </span>
+                    <span className="block md:hidden lg:block whitespace-nowrap">{item.label}</span>
                   </>
                 );
               }}
@@ -185,6 +224,7 @@ const AppShell = () => {
           ))}
         </nav>
 
+        {/* Logout button at the bottom of sidebar */}
         <div className="p-4 border-t border-border">
           <button
             onClick={handleLogout}
@@ -206,13 +246,16 @@ const AppShell = () => {
 
       {/* Mobile Sidebar */}
       <aside
-        className={`fixed top-0 left-0 bottom-0 w-72 bg-surface z-50 lg:hidden transition-transform duration-300 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed top-0 left-0 bottom-0 w-72 bg-surface z-50 lg:hidden transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
+        {/* Logo and Close Button */}
         <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3 text-primary">
+          {/* Logo and Brand name */}
+          <Link to="/dashboard" className="flex items-center gap-3 text-primary no-underline">
             <MdOutlineAccountBalanceWallet size={28} />
             <span className="text-t-primary text-xl font-bold">SmartInvest</span>
-          </div>
+          </Link>
+          {/* Close button */}
           <button
             onClick={() => setSidebarOpen(false)}
             className="p-2 text-t-secondary border-none bg-transparent"
@@ -220,8 +263,9 @@ const AppShell = () => {
             <MdClose size={24} />
           </button>
         </div>
+        {/* Navigation Links */}
         <nav className="px-4 space-y-2 mt-4">
-          {navItems.map((item) => {
+          {navItems.map(item => {
             const IconComponent = item.icon;
             return (
               <Link
@@ -229,8 +273,8 @@ const AppShell = () => {
                 to={item.path}
                 className={`flex items-center gap-3 px-4 py-4 rounded-xl text-base font-bold no-underline ${
                   location.pathname === item.path
-                    ? "bg-primary text-t-inverse"
-                    : "text-t-secondary"
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-t-secondary'
                 }`}
               >
                 <IconComponent className="text-2xl" />
@@ -239,6 +283,7 @@ const AppShell = () => {
             );
           })}
         </nav>
+        {/* Mobile Logout */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
           <button
             onClick={handleLogout}
@@ -254,6 +299,7 @@ const AppShell = () => {
         {/* Top Navbar */}
         <header className="h-16 lg:h-20 bg-surface border-b border-border flex items-center justify-between px-4 md:px-8 shrink-0">
           <div className="flex items-center gap-4">
+            {/* Mobile Hamburger Menu */}
             <button
               className="lg:hidden p-2 text-t-secondary hover:bg-slate-50 rounded-lg border-none bg-transparent"
               onClick={() => setSidebarOpen(true)}
@@ -261,11 +307,9 @@ const AppShell = () => {
               <MdMenu size={24} />
             </button>
             <div>
-              <h2 className="text-t-primary text-lg md:text-xl font-bold">
-                {getPageTitle()}
-              </h2>
+              <h2 className="text-t-primary text-lg md:text-xl font-bold">{getPageTitle()}</h2>
               <p className="hidden md:block text-[10px] text-t-placeholder uppercase font-black tracking-widest mt-0.5">
-                Welcome back, {user?.name?.split(" ")[0]}
+                {getPageSubtitle()}
               </p>
             </div>
           </div>
@@ -278,7 +322,7 @@ const AppShell = () => {
                   Net Worth
                 </p>
                 <p
-                  className={`text-sm font-black text-t-primary ${portLoading ? "animate-pulse opacity-50" : ""}`}
+                  className={`text-sm font-black text-t-primary ${portLoading ? 'animate-pulse opacity-50' : ''}`}
                 >
                   {formatINR(totalCurrentValue)}
                 </p>
@@ -289,9 +333,9 @@ const AppShell = () => {
                   Total Returns
                 </p>
                 <p
-                  className={`text-sm font-black ${totalReturnPercent >= 0 ? "text-positive" : "text-negative"} ${portLoading ? "animate-pulse opacity-50" : ""}`}
+                  className={`text-sm font-black ${totalReturnPercent >= 0 ? 'text-positive' : 'text-negative'} ${portLoading ? 'animate-pulse opacity-50' : ''}`}
                 >
-                  {totalReturnPercent >= 0 ? "+" : ""}
+                  {totalReturnPercent >= 0 ? '+' : ''}
                   {parseFloat(totalReturnPercent).toFixed(2)}%
                 </p>
               </div>
@@ -339,7 +383,7 @@ const AppShell = () => {
                         notifications.map((notification, index) => (
                           <div
                             key={notification.id}
-                            className={`p-4 hover:bg-slate-50 transition-colors ${index !== notifications.length - 1 ? "border-b border-slate-50" : ""}`}
+                            className={`p-4 hover:bg-slate-50 transition-colors ${index !== notifications.length - 1 ? 'border-b border-slate-50' : ''}`}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div>
@@ -353,9 +397,7 @@ const AppShell = () => {
                               <div className="flex items-center gap-1 shrink-0">
                                 {!notification.isRead && (
                                   <button
-                                    onClick={() =>
-                                      markNotificationAsRead(notification.id)
-                                    }
+                                    onClick={() => markNotificationAsRead(notification.id)}
                                     aria-label="Mark as read"
                                     title="Mark as read"
                                     className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors border-none bg-transparent cursor-pointer"
@@ -392,7 +434,7 @@ const AppShell = () => {
                   </div>
                   <div className="hidden md:block text-left">
                     <p className="text-xs font-bold text-t-primary leading-none">
-                      {user?.name?.split(" ")[0]}
+                      {user?.name?.split(' ')[0]}
                     </p>
                     <p className="text-[9px] text-t-placeholder font-medium mt-1 uppercase tracking-widest">
                       Investor
@@ -429,7 +471,9 @@ const AppShell = () => {
 
         {/* Dynamic Page Content */}
         <main className="flex-1 overflow-y-auto w-full custom-scrollbar">
-          <Outlet />
+          <div className="max-w-[1400px] mx-auto w-full">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
