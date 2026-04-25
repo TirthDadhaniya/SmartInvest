@@ -1,6 +1,12 @@
 const axios = require("axios");
 const Investment = require("../models/Investment");
 
+/**
+ * Normalizes complex fund categories into a few standard buckets
+ * for charting and analysis.
+ * @param {string} category - Raw category from MF API
+ * @returns {string} - Simplified category
+ */
 const simplifyCategory = (category) => {
   if (!category) return "Other";
   const cat = category.toLowerCase();
@@ -16,10 +22,12 @@ const simplifyCategory = (category) => {
 /**
  * Fetches latest NAVs for a list of unique scheme codes.
  * Returns a map of scheme_code -> { nav, fullData }
+ * Uses the high-performance /latest endpoint when history isn't needed.
  */
 const getLatestNAVs = async (schemeCodes, includeHistory = false) => {
   const navMap = {};
   const fullDataMap = {};
+  
   const promises = schemeCodes.map(async (code) => {
     try {
       // If history is needed, use the main API, else use /latest for speed
@@ -33,7 +41,7 @@ const getLatestNAVs = async (schemeCodes, includeHistory = false) => {
         if (includeHistory) fullDataMap[code] = response.data;
       }
     } catch (error) {
-      console.error(`Error fetching NAV for ${code}:`, error.message);
+      console.error(`[NAV Fetch Error] for ${code}:`, error.message);
     }
   });
 
@@ -42,10 +50,14 @@ const getLatestNAVs = async (schemeCodes, includeHistory = false) => {
 };
 
 /**
- * Gets core portfolio statistics for a user.
+ * Aggregates user investments and calculates real-time portfolio performance.
+ * @param {string} userId - User ID
+ * @param {object} options - { includeHistory: boolean }
+ * @returns {Promise<object>} - Comprehensive portfolio statistics
  */
 const getPortfolioStats = async (userId, options = {}) => {
-  const investments = await Investment.find({ userID: userId });
+  // Use .lean() for faster lookup as we convert to object anyway
+  const investments = await Investment.find({ userID: userId }).lean();
 
   if (investments.length === 0) {
     return {
@@ -101,7 +113,7 @@ const getPortfolioStats = async (userId, options = {}) => {
     }
 
     return {
-      ...inv.toObject(),
+      ...inv,
       currentNav,
       currentValue,
       category,
@@ -116,14 +128,14 @@ const getPortfolioStats = async (userId, options = {}) => {
     totalInvested,
     totalCurrentValue,
     totalProfitLoss,
-    totalPLPercentage: (totalProfitLoss / totalInvested) * 100,
+    totalPLPercentage: totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0,
     earliestInvestmentDate,
     equityValue,
-    equityPercentage: (equityValue / totalCurrentValue) * 100,
+    equityPercentage: totalCurrentValue > 0 ? (equityValue / totalCurrentValue) * 100 : 0,
     investments: processedInvestments,
     categoryAllocation,
     uniqueCategories,
-    weightedExpenseRatio: totalExpenseWeight / totalInvested,
+    weightedExpenseRatio: totalInvested > 0 ? totalExpenseWeight / totalInvested : 0,
     fullDataMap, // Only populated if includeHistory is true
   };
 };

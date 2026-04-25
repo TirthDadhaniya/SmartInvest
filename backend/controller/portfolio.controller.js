@@ -1,20 +1,24 @@
 const User = require("../models/User");
 const Goal = require("../models/Goal");
 const SIP = require("../models/SIP");
-const axios = require("axios");
 const portfolioService = require("../services/portfolio.service");
 const calcService = require("../services/calculation.service");
+const axios = require("axios");
 
+/**
+ * Provides a comprehensive summary of the user's portfolio.
+ * GET /api/portfolio/summary
+ */
 exports.summary = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Fetch All Data Concurrently
+    // Fetch All Data Concurrently for speed
     const [stats, goalsCount, sipsCount, user] = await Promise.all([
       portfolioService.getPortfolioStats(userId),
       Goal.countDocuments({ userID: userId }),
       SIP.countDocuments({ userID: userId }),
-      User.findById(userId).select("riskPreference"),
+      User.findById(userId).select("riskPreference").lean(),
     ]);
 
     const { totalInvested, totalCurrentValue, investments } = stats;
@@ -58,7 +62,7 @@ exports.summary = async (req, res) => {
       categoryAllocation[category] = (categoryAllocation[category] || 0) + inv.currentValue;
 
       if (category === "equity" || category === "index") {
-        equityCurrentValue += inv.investedAmount;
+        equityCurrentValue += inv.currentValue;
       }
       
       const expenseRatio = inv.expenseRatio || 1.0;
@@ -80,51 +84,51 @@ exports.summary = async (req, res) => {
 
     const totalProfitLoss = totalCurrentValue - totalInvested;
     const totalPLPercentage = totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
-    const equityPercentage = totalInvested > 0 ? (equityCurrentValue / totalInvested) * 100 : 0;
+    const equityPercentage = totalCurrentValue > 0 ? (equityCurrentValue / totalCurrentValue) * 100 : 0;
     const weightedExpenseRatio = totalInvested > 0 ? totalExpenseWeight / totalInvested : 0;
     const categoryCount = uniqueCategories.size;
 
-    // HEALTH SCORE (The 100 Points)
-    let score = { diversification: 0, allocation: 0, riskMatch: 0, expenseRation: 0, goals: 0, sips: 0 };
+    // HEALTH SCORE (0-100)
+    let scoreBreakdown = { diversification: 0, allocation: 0, riskMatch: 0, expenseRatio: 0, goals: 0, sips: 0 };
 
-    // Diversification (Max 30)
-    if (categoryCount === 1) score.diversification = 5;
-    else if (categoryCount === 2) score.diversification = 15;
-    else if (categoryCount === 3) score.diversification = 25;
-    else if (categoryCount >= 4) score.diversification = 30;
+    // 1. Diversification (Max 30)
+    if (categoryCount === 1) scoreBreakdown.diversification = 5;
+    else if (categoryCount === 2) scoreBreakdown.diversification = 15;
+    else if (categoryCount === 3) scoreBreakdown.diversification = 25;
+    else if (categoryCount >= 4) scoreBreakdown.diversification = 30;
 
-    // Allocation Balance (Max 25)
-    if (equityPercentage >= 40 && equityPercentage <= 70) score.allocation = 25;
-    else if (equityPercentage > 70 && equityPercentage <= 85) score.allocation = 18;
-    else if (equityPercentage < 40) score.allocation = 15;
-    else if (equityPercentage > 85) score.allocation = 10;
+    // 2. Allocation Balance (Max 25)
+    if (equityPercentage >= 40 && equityPercentage <= 70) scoreBreakdown.allocation = 25;
+    else if (equityPercentage > 70 && equityPercentage <= 85) scoreBreakdown.allocation = 18;
+    else if (equityPercentage < 40) scoreBreakdown.allocation = 15;
+    else if (equityPercentage > 85) scoreBreakdown.allocation = 10;
 
-    // Risk Match (Max 15)
+    // 3. Risk Match (Max 15)
     const riskMap = { Conservative: 1, Moderate: 2, Aggressive: 3 };
-    const userRisk = riskMap[user.riskPreference] || 2;
+    const userRisk = riskMap[user?.riskPreference] || 2;
     let portfolioRisk = 2; 
     if (equityPercentage < 40) portfolioRisk = 1;
     if (equityPercentage > 70) portfolioRisk = 3;
 
     const riskDifference = Math.abs(userRisk - portfolioRisk);
-    if (riskDifference === 0) score.riskMatch = 15;
-    else if (riskDifference === 1) score.riskMatch = 8;
-    else if (riskDifference === 2) score.riskMatch = 3;
+    if (riskDifference === 0) scoreBreakdown.riskMatch = 15;
+    else if (riskDifference === 1) scoreBreakdown.riskMatch = 8;
+    else if (riskDifference === 2) scoreBreakdown.riskMatch = 3;
 
-    // Expense Ratio (Max 10)
-    if (weightedExpenseRatio <= 1.0 && weightedExpenseRatio >= 0.5) score.expenseRation = 8;
-    else if (weightedExpenseRatio < 0.5) score.expenseRation = 10;
-    else score.expenseRation = 5;
+    // 4. Expense Ratio (Max 10)
+    if (weightedExpenseRatio <= 1.0 && weightedExpenseRatio >= 0.5) scoreBreakdown.expenseRatio = 8;
+    else if (weightedExpenseRatio < 0.5) scoreBreakdown.expenseRatio = 10;
+    else scoreBreakdown.expenseRatio = 5;
 
-    // Goal Alignment (Max 10)
-    score.goals = goalsCount >= 2 ? 10 : (goalsCount === 1 ? 5 : 0);
+    // 5. Goal Alignment (Max 10)
+    scoreBreakdown.goals = goalsCount >= 2 ? 10 : (goalsCount === 1 ? 5 : 0);
 
-    // SIP Consistency (Max 10)
-    score.sips = sipsCount >= 2 ? 10 : (sipsCount === 1 ? 5 : 0);
+    // 6. SIP Consistency (Max 10)
+    scoreBreakdown.sips = sipsCount >= 2 ? 10 : (sipsCount === 1 ? 5 : 0);
 
-    const finalScore = Object.values(score).reduce((sum, val) => sum + val, 0);
+    const finalScore = Object.values(scoreBreakdown).reduce((sum, val) => sum + val, 0);
 
-    // Generate Actionable Tips
+    // 7. Actionable Tips
     const tips = [];
     if (equityPercentage > 85) tips.push("Your portfolio is heavily weighted in equity. Consider adding Debt funds for stability.");
     if (equityPercentage < 40) tips.push("Your portfolio has low equity exposure. Consider adding Equity funds for growth potential.");
@@ -156,24 +160,30 @@ exports.summary = async (req, res) => {
             categoriesFound: Array.from(uniqueCategories),
             allocationChart: donutChartData,
           },
-          breakdown: score,
+          breakdown: scoreBreakdown,
           tips: tips,
         },
         funds: processedFunds,
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("[Portfolio Summary Error]", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
-// 1. POST-TAX RETURNS — GET /api/portfolio/tax-analysis
+/**
+ * Calculates LTCG tax estimates and after-tax returns.
+ * GET /api/portfolio/tax-analysis
+ */
 exports.getTaxAnalysis = async (req, res) => {
   try {
     const stats = await portfolioService.getPortfolioStats(req.user._id);
     if (stats.investments.length === 0) {
-      return res.json({ success: true, data: { taxInfo: calcService.calculateLTCGTax(0), investments: [] } });
+      return res.json({ 
+        success: true, 
+        data: { taxInfo: calcService.calculateLTCGTax(0), investments: [] } 
+      });
     }
 
     const taxInfo = calcService.calculateLTCGTax(stats.totalProfitLoss);
@@ -207,7 +217,10 @@ exports.getTaxAnalysis = async (req, res) => {
   }
 };
 
-// 2. BREAK-EVEN NAV — GET /api/portfolio/break-even
+/**
+ * Calculates break-even NAVs considering exit loads.
+ * GET /api/portfolio/break-even
+ */
 exports.getBreakEven = async (req, res) => {
   try {
     const stats = await portfolioService.getPortfolioStats(req.user._id);
@@ -233,7 +246,10 @@ exports.getBreakEven = async (req, res) => {
   }
 };
 
-// 3. WHAT-IF SIMULATOR — POST /api/portfolio/what-if
+/**
+ * Simulates historical returns for a fund and amount.
+ * POST /api/portfolio/what-if
+ */
 exports.getWhatIf = async (req, res) => {
   try {
     const { scheme_code, amount, date } = req.body;
@@ -250,6 +266,8 @@ exports.getWhatIf = async (req, res) => {
     const targetDate = new Date(date);
     const history = mfData.data;
     let purchaseNAV = null;
+    
+    // Find first available NAV on or before target date
     for (let i = 0; i < history.length; i++) {
       const [d, m, y] = history[i].date.split("-");
       if (new Date(`${y}-${m}-${d}`) <= targetDate) {
@@ -259,7 +277,7 @@ exports.getWhatIf = async (req, res) => {
     }
 
     if (!purchaseNAV) {
-      return res.status(400).json({ success: false, message: "No NAV data available for date" });
+      return res.status(400).json({ success: false, message: "No NAV data available for that date" });
     }
 
     const currentNAV = parseFloat(history[0].nav);
@@ -290,13 +308,20 @@ exports.getWhatIf = async (req, res) => {
   }
 };
 
-// 4. DASHBOARD QUICK WHAT-IF — GET /api/portfolio/quick-what-if
+/**
+ * Returns a quick 1-year historical simulation for the user's best fund.
+ * GET /api/portfolio/quick-what-if
+ */
 exports.getQuickWhatIf = async (req, res) => {
   try {
     const stats = await portfolioService.getPortfolioStats(req.user._id, { includeHistory: true });
     if (stats.investments.length === 0) return res.json({ success: true, data: null });
 
-    const bestFund = stats.investments.reduce((prev, current) => (prev.plPercentage > current.plPercentage) ? prev : current);
+    // Identify best performing fund
+    const bestFund = stats.investments.reduce((prev, current) => 
+      (prev.plPercentage > current.plPercentage) ? prev : current
+    );
+
     const fundHistory = stats.fullDataMap[bestFund.scheme_code]?.data;
     if (!fundHistory) return res.json({ success: true, data: null });
 
@@ -334,10 +359,13 @@ exports.getQuickWhatIf = async (req, res) => {
   }
 };
 
-// 5. GOAL GAP ALERT — GET /api/portfolio/goal-gaps
+/**
+ * Returns gap analysis for all user goals (projected vs target).
+ * GET /api/portfolio/goal-gaps
+ */
 exports.getGoalGaps = async (req, res) => {
   try {
-    const goals = await Goal.find({ userID: req.user._id });
+    const goals = await Goal.find({ userID: req.user._id }).lean();
     if (goals.length === 0) return res.json({ success: true, data: [] });
 
     const stats = await portfolioService.getPortfolioStats(req.user._id);
@@ -352,10 +380,12 @@ exports.getGoalGaps = async (req, res) => {
       const gap = goal.targetAmount - projectedValue;
       const progressPercent = Math.min(100, (stats.totalCurrentValue / goal.targetAmount) * 100);
 
-      let extraSIPNeeded = gap > 0 ? calcService.calculateRequiredSIP(gap, monthsRemaining, annualReturnPct > 0 ? annualReturnPct : 12) : 0;
+      let extraSIPNeeded = gap > 0 
+        ? calcService.calculateRequiredSIP(gap, monthsRemaining, annualReturnPct > 0 ? annualReturnPct : 12) 
+        : 0;
       
       return {
-        ...goal.toObject(),
+        ...goal,
         progressPercent,
         projectedValue: Math.round(projectedValue),
         gap: Math.max(0, Math.round(gap)),
@@ -374,11 +404,16 @@ exports.getGoalGaps = async (req, res) => {
   }
 };
 
-// 6. PORTFOLIO STRESS TEST — GET /api/portfolio/stress-test
+/**
+ * Simulates portfolio value under market correction scenarios.
+ * GET /api/portfolio/stress-test
+ */
 exports.getStressTest = async (req, res) => {
   try {
     const stats = await portfolioService.getPortfolioStats(req.user._id);
-    if (stats.investments.length === 0) return res.json({ success: true, data: { totalCurrentValue: 0, scenarios: {} } });
+    if (stats.investments.length === 0) {
+      return res.json({ success: true, data: { totalCurrentValue: 0, scenarios: {} } });
+    }
 
     let moderateTotalLoss = 0;
     let severeTotalLoss = 0;
@@ -400,8 +435,18 @@ exports.getStressTest = async (req, res) => {
       data: {
         totalCurrentValue: Math.round(stats.totalCurrentValue),
         scenarios: {
-          moderate: { label: "Moderate Correction", estimatedLoss: Math.round(moderateTotalLoss), portfolioValue: Math.round(stats.totalCurrentValue - moderateTotalLoss), lossPct: (moderateTotalLoss / stats.totalCurrentValue) * 100 },
-          severe: { label: "Severe Crash", estimatedLoss: Math.round(severeTotalLoss), portfolioValue: Math.round(stats.totalCurrentValue - severeTotalLoss), lossPct: (severeTotalLoss / stats.totalCurrentValue) * 100 },
+          moderate: { 
+            label: "Moderate Correction", 
+            estimatedLoss: Math.round(moderateTotalLoss), 
+            portfolioValue: Math.round(stats.totalCurrentValue - moderateTotalLoss), 
+            lossPct: (moderateTotalLoss / stats.totalCurrentValue) * 100 
+          },
+          severe: { 
+            label: "Severe Crash", 
+            estimatedLoss: Math.round(severeTotalLoss), 
+            portfolioValue: Math.round(stats.totalCurrentValue - severeTotalLoss), 
+            lossPct: (severeTotalLoss / stats.totalCurrentValue) * 100 
+          },
         },
         investments: investmentStress
       }
@@ -411,11 +456,16 @@ exports.getStressTest = async (req, res) => {
   }
 };
 
-// 7. EXPENSE RATIO DRAIN — GET /api/portfolio/expense-drain
+/**
+ * Returns annual and 10-year opportunity cost of fund expenses.
+ * GET /api/portfolio/expense-drain
+ */
 exports.getExpenseDrain = async (req, res) => {
   try {
     const stats = await portfolioService.getPortfolioStats(req.user._id);
-    if (stats.investments.length === 0) return res.json({ success: true, data: { totalCurrentValue: 0, annualCost: 0 } });
+    if (stats.investments.length === 0) {
+      return res.json({ success: true, data: { totalCurrentValue: 0, annualCost: 0 } });
+    }
 
     const investmentDetails = stats.investments.map(inv => {
       const er = inv.expenseRatio > 0 ? inv.expenseRatio : calcService.getDefaultExpenseRatio(inv.scheme_category);
@@ -444,16 +494,22 @@ exports.getExpenseDrain = async (req, res) => {
   }
 };
 
-// 8. PORTFOLIO REPORT CARD — GET /api/portfolio/report-card
+/**
+ * Returns a graded assessment of the user's portfolio.
+ * GET /api/portfolio/report-card
+ */
 exports.getReportCard = async (req, res) => {
   try {
+    const userId = req.user._id;
     const [stats, goals, sips] = await Promise.all([
-      portfolioService.getPortfolioStats(req.user._id),
-      Goal.find({ userID: req.user._id }),
-      SIP.find({ userID: req.user._id }),
+      portfolioService.getPortfolioStats(userId),
+      Goal.find({ userID: userId }).lean(),
+      SIP.find({ userID: userId }).lean(),
     ]);
 
-    if (stats.investments.length === 0) return res.json({ success: true, data: { overallGrade: "N/A" } });
+    if (stats.investments.length === 0) {
+      return res.json({ success: true, data: { overallGrade: "N/A" } });
+    }
 
     const reportCard = calcService.calculateReportCard(stats, goals, sips, req.user.riskPreference);
 
