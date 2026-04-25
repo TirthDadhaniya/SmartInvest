@@ -1,7 +1,23 @@
 const SIP = require("../models/SIP");
-const { createInvestment } = require("../services/investment.service");
-const { createTransaction } = require("../services/transaction.service");
-const { normalizeToDateOnly } = require("../services/calculation.service");
+const { createInvestment } = require("./investment.service");
+const { createTransaction } = require("./transaction.service");
+const { normalizeToDateOnly } = require("./calculation.service");
+
+/**
+ * Advances a date by one calendar month while clamping to the last valid day
+ * of the target month. e.g. Jan 31 → Feb 28, not Mar 3.
+ */
+const addOneMonthClamped = (date) => {
+  const d = new Date(date);
+  const targetMonth = d.getUTCMonth() + 1; // 0-indexed, wraps via Date automatically
+  d.setUTCMonth(targetMonth);
+  // If the day overflowed (e.g. Jan 31 → Mar 3), back up to last day of the
+  // intended month.
+  if (d.getUTCMonth() !== ((targetMonth) % 12)) {
+    d.setUTCDate(0); // setUTCDate(0) → last day of the previous month
+  }
+  return d;
+};
 
 const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }) => {
   const sip = await SIP.findOne({ _id: sipId, userID: userId });
@@ -39,6 +55,11 @@ const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }
     type: "sip",
   });
 
+  // Guard: createInvestment returns { error, statusCode } on validation failure
+  if (investment?.error) {
+    return { success: false, statusCode: investment.statusCode || 400, message: investment.error };
+  }
+
   await createTransaction({
     userID: userId,
     scheme_code: investment.scheme_code,
@@ -50,10 +71,8 @@ const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }
     date: investment.purchaseDate,
   });
 
-  const updatedDueDate = new Date(dueDateOnly);
-  updatedDueDate.setUTCMonth(updatedDueDate.getUTCMonth() + 1);
-
-  sip.nextDueDate = updatedDueDate;
+  // Advance to next due date, clamped to valid month-end
+  sip.nextDueDate = addOneMonthClamped(dueDateOnly);
   sip.lastExecutedDate = today;
   await sip.save();
 
