@@ -10,7 +10,11 @@ const { validateEnv } = require("./config/env");
 // ─── Environment ──────────────────────────────────────────────────────────────
 // MUST be called before reading any process.env values
 dotenv.config();
-validateEnv();
+const envValidation = validateEnv();
+if (!envValidation.success) {
+  console.error(envValidation.message);
+  process.exit(1);
+}
 
 const PORT = process.env.PORT || 5000;
 
@@ -48,7 +52,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS policy: origin ${origin} not allowed`));
+        callback(null, false);
       }
     },
     credentials: true, // Required so browsers send/receive cookies
@@ -75,28 +79,6 @@ app.use("/api/goals", require("./routes/goal.routes"));
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
   res.send("Server is running");
-});
-
-// ─── Centralized Error Handler ────────────────────────────────────────────────
-// Must be registered AFTER all routes. Express identifies it by the 4-argument
-// signature (err, req, res, next).
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  // CORS errors surface as regular Error objects thrown by the cors callback
-  if (err.message && err.message.startsWith("CORS policy:")) {
-    return res.status(403).json({ success: false, message: err.message });
-  }
-
-  // Log unexpected server errors for debugging (avoid leaking stack in prod)
-  console.error("[Unhandled Error]", err);
-
-  const statusCode = err.statusCode || err.status || 500;
-  const message =
-    process.env.NODE_ENV === "production" && statusCode === 500
-      ? "Internal server error"
-      : err.message || "Internal server error";
-
-  res.status(statusCode).json({ success: false, message });
 });
 
 // ─── Start Server ─────────────────────────────────────────────────────────────

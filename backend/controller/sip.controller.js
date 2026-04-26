@@ -135,9 +135,8 @@ exports.executeSIPInstalment = async (req, res) => {
     });
 
     if (!result.success) {
-      return res
-        .status(result.statusCode || 400)
-        .json({ success: false, message: result.message });
+      const status = result.message === "SIP not found" ? 404 : 400;
+      return res.status(status).json({ success: false, message: result.message });
     }
 
     res.status(201).json({ success: true, data: result });

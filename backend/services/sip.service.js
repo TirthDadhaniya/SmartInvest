@@ -23,11 +23,11 @@ const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }
   const sip = await SIP.findOne({ _id: sipId, userID: userId });
 
   if (!sip) {
-    return { success: false, statusCode: 404, message: "SIP not found" };
+    return { success: false, message: "SIP not found" };
   }
 
   if (sip.status !== "active") {
-    return { success: false, statusCode: 400, message: "SIP is not active" };
+    return { success: false, message: "SIP is not active" };
   }
 
   const today = executionDate ? new Date(executionDate) : new Date();
@@ -37,7 +37,6 @@ const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }
   if (todayDateOnly < dueDateOnly) {
     return {
       success: false,
-      statusCode: 400,
       message: `SIP instalment is not due yet. Next due date is ${dueDateOnly.toDateString()}`,
     };
   }
@@ -55,9 +54,9 @@ const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }
     type: "sip",
   });
 
-  // Guard: createInvestment returns { error, statusCode } on validation failure
+  // Guard: createInvestment returns { error } on validation failure
   if (investment?.error) {
-    return { success: false, statusCode: investment.statusCode || 400, message: investment.error };
+    return { success: false, message: investment.error };
   }
 
   await createTransaction({

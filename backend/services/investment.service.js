@@ -14,7 +14,7 @@ const Investment = require("../models/Investment");
  * @param {Date|string} data.purchaseDate - Date of purchase
  * @param {string} [data.type='lumpsum'] - Type of investment (lumpsum or sip)
  * @param {number} [data.expenseRatio=0] - Expense ratio of the fund
- * @returns {Promise<Object>} The created investment or an error object
+ * @returns {Promise<Object>} The created investment
  */
 const createInvestment = async (data) => {
   const {
@@ -31,8 +31,19 @@ const createInvestment = async (data) => {
     expenseRatio,
   } = data;
 
-  if (!scheme_code || !scheme_name || !scheme_category || !investedAmount || !purchaseNAV || !purchaseDate) {
-    return { error: "Missing required fields for investment", statusCode: 400 };
+  if (
+    !scheme_code ||
+    !scheme_name ||
+    !scheme_category ||
+    !investedAmount ||
+    !purchaseNAV ||
+    !purchaseDate
+  ) {
+    return { error: "Missing required fields for investment" };
+  }
+
+  if (Number(investedAmount) <= 0 || Number(purchaseNAV) <= 0) {
+    return { error: "Invested amount and purchase NAV must be positive" };
   }
 
   const units = investedAmount / purchaseNAV;
@@ -64,11 +75,11 @@ const createInvestment = async (data) => {
  */
 const processSell = async (investment, unitsToSell, currentNAV) => {
   if (!unitsToSell || unitsToSell <= 0) {
-    return { error: "Units to sell must be greater than zero", statusCode: 400 };
+    return { error: "Units to sell must be greater than zero" };
   }
 
   if (unitsToSell > investment.units) {
-    return { error: "Units to sell cannot be greater than available units", statusCode: 400 };
+    return { error: "Units to sell cannot be greater than available units" };
   }
 
   const sellAmount = unitsToSell * currentNAV;

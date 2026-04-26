@@ -4,8 +4,14 @@ const validateEnv = () => {
   const missing = requiredEnv.filter((key) => !process.env[key]);
 
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variable(s): ${missing.join(", ")}`);
+    return {
+      success: false,
+      message: `Missing required environment variable(s): ${missing.join(", ")}`,
+      missing,
+    };
   }
+
+  return { success: true };
 };
 
 const getCookieOptions = () => {

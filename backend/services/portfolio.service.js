@@ -1,5 +1,5 @@
-const axios = require("axios");
-const Investment = require("../models/Investment");
+const axios = require('axios');
+const Investment = require('../models/Investment');
 
 /**
  * Normalizes complex fund categories into a few standard buckets
@@ -7,16 +7,15 @@ const Investment = require("../models/Investment");
  * @param {string} category - Raw category from MF API
  * @returns {string} - Simplified category
  */
-const simplifyCategory = (category) => {
-  if (!category) return "Other";
+const simplifyCategory = category => {
+  if (!category) return 'Other';
   const cat = category.toLowerCase();
-  if (cat.includes("equity") || cat.includes("growth")) return "equity";
-  if (cat.includes("debt") || cat.includes("income") || cat.includes("liquid"))
-    return "debt";
-  if (cat.includes("hybrid") || cat.includes("balanced")) return "hybrid";
-  if (cat.includes("index") || cat.includes("etf")) return "index";
-  if (cat.includes("tax") || cat.includes("elss")) return "tax-saving";
-  return "other";
+  if (cat.includes('equity') || cat.includes('growth')) return 'Equity';
+  if (cat.includes('debt') || cat.includes('income') || cat.includes('liquid')) return 'Debt';
+  if (cat.includes('hybrid') || cat.includes('balanced')) return 'Hybrid';
+  if (cat.includes('index') || cat.includes('etf')) return 'Index';
+  if (cat.includes('tax') || cat.includes('elss')) return 'Tax-Saving';
+  return 'Other';
 };
 
 /**
@@ -27,10 +26,10 @@ const simplifyCategory = (category) => {
 const getLatestNAVs = async (schemeCodes, includeHistory = false) => {
   const navMap = {};
   const fullDataMap = {};
-  
-  const promises = schemeCodes.map(async (code) => {
+
+  const promises = schemeCodes.map(async code => {
     try {
-      // If history is needed, use the main API, else use /latest for speed
+      // If history is needed, use the main API, else use /latest for speed.
       const url = includeHistory
         ? `https://api.mfapi.in/mf/${code}`
         : `https://api.mfapi.in/mf/${code}/latest`;
@@ -39,13 +38,22 @@ const getLatestNAVs = async (schemeCodes, includeHistory = false) => {
       if (response.data && response.data.data && response.data.data[0]) {
         navMap[code] = parseFloat(response.data.data[0].nav);
         if (includeHistory) fullDataMap[code] = response.data;
+        return { success: true, code };
       }
+
+      return { success: false, code, message: 'Invalid NAV payload' };
     } catch (error) {
-      console.error(`[NAV Fetch Error] for ${code}:`, error.message);
+      return { success: false, code, message: error.message };
     }
   });
 
-  await Promise.all(promises);
+  const results = await Promise.all(promises);
+  results.forEach(result => {
+    if (!result.success) {
+      console.error(`[NAV Fetch Error] for ${result.code}:`, result.message);
+    }
+  });
+
   return { navMap, fullDataMap };
 };
 
@@ -75,11 +83,8 @@ const getPortfolioStats = async (userId, options = {}) => {
     };
   }
 
-  const uniqueSchemes = [...new Set(investments.map((inv) => inv.scheme_code))];
-  const { navMap, fullDataMap } = await getLatestNAVs(
-    uniqueSchemes,
-    options.includeHistory,
-  );
+  const uniqueSchemes = [...new Set(investments.map(inv => inv.scheme_code))];
+  const { navMap, fullDataMap } = await getLatestNAVs(uniqueSchemes, options.includeHistory);
 
   let totalInvested = 0;
   let totalCurrentValue = 0;
@@ -89,7 +94,7 @@ const getPortfolioStats = async (userId, options = {}) => {
   const categoryAllocation = {};
   const uniqueCategories = new Set();
 
-  const processedInvestments = investments.map((inv) => {
+  const processedInvestments = investments.map(inv => {
     const currentNav = navMap[inv.scheme_code] || inv.purchaseNAV;
     const currentValue = inv.units * currentNav;
     const category = simplifyCategory(inv.scheme_category);
@@ -100,7 +105,7 @@ const getPortfolioStats = async (userId, options = {}) => {
     uniqueCategories.add(category);
     categoryAllocation[category] = (categoryAllocation[category] || 0) + currentValue;
 
-    if (category === "equity" || category === "index") {
+    if (category === 'Equity' || category === 'Index') {
       equityValue += currentValue;
     }
 
