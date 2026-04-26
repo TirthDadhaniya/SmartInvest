@@ -5,7 +5,12 @@ const { protect } = require("../middleware/authMiddleware");
 const { validate } = require("../middleware/validate");
 const { routeSchemas } = require("../validation/validator");
 
-router.get("/", protect, investmentController.getInvestments);
+router.get(
+  "/",
+  protect,
+  validate(routeSchemas.investment.getInvestments),
+  investmentController.getInvestments,
+);
 router.post(
   "/",
   protect,
