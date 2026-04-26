@@ -9,20 +9,18 @@
  *   import { DashboardSkeleton, InvestmentsSkeleton, ... } from "../components/PageSkeletons";
  *   if (loading) return <DashboardSkeleton />;
  */
-import React from "react";
+import React from 'react';
 
 /* ── Shared building-block components ──────────────────────────────────────── */
 
 /** A single animated rectangular placeholder bar. */
-const Bar = ({ className = "" }) => (
+const Bar = ({ className = '' }) => (
   <div className={`bg-slate-200 rounded animate-pulse ${className}`} />
 );
 
 /** A card-shaped skeleton with optional height. */
-const CardSkeleton = ({ className = "", children }) => (
-  <div
-    className={`bg-surface border border-border rounded-xl shadow-sm ${className}`}
-  >
+const CardSkeleton = ({ className = '', children }) => (
+  <div className={`bg-surface border border-border rounded-xl shadow-sm ${className}`}>
     {children}
   </div>
 );
@@ -30,10 +28,10 @@ const CardSkeleton = ({ className = "", children }) => (
 /* ── Dashboard Skeleton ───────────────────────────────────────────────────── */
 /** Matches: 4 stat cards → allocation chart + goals → stress + expense → transactions */
 export const DashboardSkeleton = () => (
-  <div className="p-4 md:p-8 space-y-8 max-w-[1400px] mx-auto w-full animate-pulse">
+  <div className="p-4 md:p-8 space-y-8 max-w-350 mx-auto w-full animate-pulse">
     {/* 4 summary cards */}
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-      {[1, 2, 3, 4].map((i) => (
+      {[1, 2, 3, 4].map(i => (
         <CardSkeleton key={i} className="p-6 space-y-3">
           <Bar className="h-3 w-24" />
           <Bar className="h-7 w-36" />
@@ -50,7 +48,7 @@ export const DashboardSkeleton = () => (
           {/* Pie placeholder */}
           <div className="size-48 rounded-full bg-slate-200 shrink-0" />
           <div className="flex-1 space-y-4">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map(i => (
               <div key={i} className="flex items-center gap-3">
                 <div className="size-3 rounded-full bg-slate-300" />
                 <Bar className="h-3 w-32" />
@@ -61,7 +59,7 @@ export const DashboardSkeleton = () => (
       </CardSkeleton>
       <CardSkeleton className="col-span-12 xl:col-span-4 p-6 space-y-4">
         <Bar className="h-3 w-28" />
-        {[1, 2, 3].map((i) => (
+        {[1, 2, 3].map(i => (
           <div key={i} className="p-3 bg-slate-50 rounded-lg space-y-2">
             <Bar className="h-3 w-28" />
             <Bar className="h-2 w-40" />
@@ -94,7 +92,7 @@ export const DashboardSkeleton = () => (
           <Bar className="h-3 w-32" />
           <Bar className="h-3 w-16" />
         </div>
-        {[1, 2, 3, 4, 5].map((i) => (
+        {[1, 2, 3, 4, 5].map(i => (
           <div key={i} className="px-6 py-4 flex justify-between border-b border-slate-50">
             <Bar className="h-3 w-20" />
             <Bar className="h-3 w-32" />
@@ -112,7 +110,7 @@ export const DashboardSkeleton = () => (
         </CardSkeleton>
         <CardSkeleton className="p-6 space-y-3">
           <Bar className="h-3 w-24" />
-          {[1, 2].map((i) => (
+          {[1, 2].map(i => (
             <div key={i} className="flex items-start gap-2">
               <div className="size-2 rounded-full bg-slate-300 mt-1 shrink-0" />
               <Bar className="h-3 w-full" />
@@ -127,7 +125,7 @@ export const DashboardSkeleton = () => (
 /* ── Investments (My Portfolio) Skeleton ───────────────────────────────────── */
 /** Matches: header + filter bar + list of fund cards */
 export const InvestmentsSkeleton = () => (
-  <div className="flex-1 p-4 md:p-8 space-y-6 max-w-[1400px] mx-auto w-full animate-pulse">
+  <div className="flex-1 p-4 md:p-8 space-y-6 max-w-350 mx-auto w-full animate-pulse">
     {/* Page header */}
     <div className="flex justify-between items-end">
       <div className="space-y-2">
@@ -151,14 +149,14 @@ export const InvestmentsSkeleton = () => (
     <Bar className="h-3 w-32" />
 
     {/* Fund cards */}
-    {[1, 2, 3, 4].map((i) => (
+    {[1, 2, 3, 4].map(i => (
       <CardSkeleton key={i} className="p-5 flex items-center gap-6">
-        <div className="flex-1 space-y-2 min-w-[180px]">
+        <div className={newFunction()}>
           <Bar className="h-4 w-48" />
           <Bar className="h-3 w-24" />
         </div>
         <div className="grid grid-cols-5 gap-6 flex-1">
-          {[1, 2, 3, 4, 5].map((j) => (
+          {[1, 2, 3, 4, 5].map(j => (
             <div key={j} className="space-y-2">
               <Bar className="h-2 w-14" />
               <Bar className="h-4 w-20" />
@@ -173,7 +171,7 @@ export const InvestmentsSkeleton = () => (
 /* ── Manage Funds Skeleton ────────────────────────────────────────────────── */
 /** Matches: header + tab bar + fund search form + holdings table */
 export const ManageFundsSkeleton = () => (
-  <div className="flex-1 p-4 md:p-8 space-y-8 max-w-[1400px] mx-auto w-full animate-pulse">
+  <div className="flex-1 p-4 md:p-8 space-y-8 max-w-350 mx-auto w-full animate-pulse">
     {/* Page header */}
     <div className="space-y-2">
       <Bar className="h-8 w-48" />
@@ -208,7 +206,7 @@ export const ManageFundsSkeleton = () => (
       <CardSkeleton className="p-6 space-y-4">
         <Bar className="h-4 w-32" />
         <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => (
+          {[1, 2, 3, 4].map(i => (
             <div key={i} className="flex justify-between">
               <Bar className="h-3 w-24" />
               <Bar className="h-3 w-20" />
@@ -221,7 +219,7 @@ export const ManageFundsSkeleton = () => (
     {/* Holdings table */}
     <div className="space-y-3">
       <Bar className="h-3 w-40" />
-      {[1, 2, 3].map((i) => (
+      {[1, 2, 3].map(i => (
         <CardSkeleton key={i} className="p-4 flex items-center gap-4">
           <Bar className="h-4 w-48 flex-1" />
           <Bar className="h-4 w-20" />
@@ -237,7 +235,7 @@ export const ManageFundsSkeleton = () => (
 /* ── Transactions Skeleton ────────────────────────────────────────────────── */
 /** Matches: header + filter bar + table with rows */
 export const TransactionsSkeleton = () => (
-  <div className="flex-1 p-8 space-y-6 max-w-[1400px] mx-auto w-full animate-pulse">
+  <div className="flex-1 p-8 space-y-6 max-w-350 mx-auto w-full animate-pulse">
     {/* Header */}
     <div className="flex justify-between items-end">
       <div className="space-y-2">
@@ -249,7 +247,7 @@ export const TransactionsSkeleton = () => (
 
     {/* Filter bar */}
     <CardSkeleton className="p-4 flex flex-wrap gap-3 items-center">
-      <Bar className="h-10 flex-1 min-w-[260px] rounded-lg" />
+      <Bar className="h-10 flex-1 min-w-65 rounded-lg" />
       <Bar className="h-10 w-36 rounded-lg" />
       <Bar className="h-10 w-36 rounded-lg" />
       <Bar className="h-10 w-28 rounded-lg" />
@@ -260,15 +258,15 @@ export const TransactionsSkeleton = () => (
     <Bar className="h-3 w-28" />
 
     {/* Table */}
-    <CardSkeleton className="overflow-hidden min-h-[500px]">
+    <CardSkeleton className="overflow-hidden min-h-125">
       {/* Table header */}
       <div className="bg-slate-50 px-6 py-4 flex gap-6 border-b border-border">
-        {["w-16", "w-40", "w-12", "w-20", "w-20", "w-20"].map((w, i) => (
+        {['w-16', 'w-40', 'w-12', 'w-20', 'w-20', 'w-20'].map((w, i) => (
           <Bar key={i} className={`h-3 ${w}`} />
         ))}
       </div>
       {/* Table rows */}
-      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
         <div key={i} className="px-6 py-4 flex gap-6 border-b border-slate-50">
           <Bar className="h-4 w-20" />
           <Bar className="h-4 w-40" />
@@ -285,7 +283,7 @@ export const TransactionsSkeleton = () => (
 /* ── Profile Skeleton ─────────────────────────────────────────────────────── */
 /** Matches: header + 3-column grid (user + tax | goals + report card) */
 export const ProfileSkeleton = () => (
-  <div className="flex-1 p-4 md:p-8 space-y-8 max-w-[1400px] mx-auto w-full animate-pulse">
+  <div className="flex-1 p-4 md:p-8 space-y-8 max-w-350 mx-auto w-full animate-pulse">
     {/* Header */}
     <div className="flex justify-between items-center">
       <div className="space-y-2">
@@ -318,7 +316,7 @@ export const ProfileSkeleton = () => (
         <CardSkeleton className="p-6 space-y-4">
           <Bar className="h-4 w-36" />
           <Bar className="h-3 w-full" />
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3].map(i => (
             <div key={i} className="flex justify-between border-b border-border pb-2">
               <Bar className="h-3 w-24" />
               <Bar className="h-3 w-20" />
@@ -335,7 +333,7 @@ export const ProfileSkeleton = () => (
             <Bar className="h-5 w-32" />
             <Bar className="h-8 w-24 rounded-lg" />
           </div>
-          {[1, 2].map((i) => (
+          {[1, 2].map(i => (
             <div key={i} className="border border-border rounded-xl p-5 space-y-3">
               <div className="flex justify-between">
                 <Bar className="h-5 w-36" />
@@ -356,7 +354,7 @@ export const ProfileSkeleton = () => (
             <Bar className="h-10 w-12 rounded-lg" />
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            {[1, 2, 3, 4, 5].map((i) => (
+            {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="bg-slate-50 rounded-xl p-4 text-center space-y-2">
                 <div className="w-10 h-10 bg-slate-200 rounded-full mx-auto" />
                 <Bar className="h-3 w-16 mx-auto" />
@@ -373,7 +371,7 @@ export const ProfileSkeleton = () => (
 /* ── Fund Detail Skeleton ─────────────────────────────────────────────────── */
 /** Matches: back button + fund header + chart + metrics grid */
 export const FundDetailSkeleton = () => (
-  <div className="flex-1 p-4 md:p-8 space-y-6 max-w-[1400px] mx-auto w-full animate-pulse">
+  <div className="flex-1 p-4 md:p-8 space-y-6 max-w-350 mx-auto w-full animate-pulse">
     {/* Back button */}
     <Bar className="h-4 w-28" />
 
@@ -398,7 +396,7 @@ export const FundDetailSkeleton = () => (
       <div className="flex justify-between">
         <Bar className="h-4 w-28" />
         <div className="flex gap-2">
-          {[1, 2, 3, 4, 5].map((i) => (
+          {[1, 2, 3, 4, 5].map(i => (
             <Bar key={i} className="h-7 w-12 rounded" />
           ))}
         </div>
@@ -408,7 +406,7 @@ export const FundDetailSkeleton = () => (
 
     {/* Metrics grid */}
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
         <CardSkeleton key={i} className="p-4 space-y-2">
           <Bar className="h-2 w-20" />
           <Bar className="h-5 w-28" />
@@ -417,3 +415,6 @@ export const FundDetailSkeleton = () => (
     </div>
   </div>
 );
+function newFunction() {
+  return 'flex-1 space-y-2 min-w-[180px]';
+}
