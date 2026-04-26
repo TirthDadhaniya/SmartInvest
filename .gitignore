@@ -14,6 +14,7 @@ build/
 .env.*.local
 *.local
 jsconfig.json
+.prettierrc
 
 # Logs
 logs/
