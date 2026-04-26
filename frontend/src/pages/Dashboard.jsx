@@ -258,14 +258,18 @@ const Dashboard = () => {
   const {
     totalInvested,
     totalCurrentValue,
-    totalProfitLoss,
+    unrealizedProfit,
+    realizedProfit,
+    totalProfit,
     totalReturnPercent,
     assetAllocation,
     healthScore,
     investments,
     expenseInfo,
   } = portfolio;
-  const isProfit = totalProfitLoss >= 0;
+  const isUnrealizedProfit = unrealizedProfit >= 0;
+  const isRealizedProfit = realizedProfit >= 0;
+  const isTotalProfit = totalProfit >= 0;
 
   const topCategory = normalizedCategoryAllocation[0] || null;
   const categoryPieData = normalizedCategoryAllocation;
@@ -365,48 +369,105 @@ const Dashboard = () => {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <div className="bg-surface p-6 rounded-card border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6">
+        <div className="xl:col-span-8 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+          {/* <div className="bg-surface p-6 rounded-card border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+          <p className="text-t-secondary text-sm font-medium">Portfolio Value</p>
+          <p className="text-2xl font-bold mt-1 text-t-primary">{formatINR(totalCurrentValue)}</p>
+          <div className="mt-4 flex items-center gap-1 text-t-placeholder text-xs">
+            <MdOutlineInfo className="text-[14px]" />
+            <span>Current value of funds you hold</span>
+          </div>
+        </div> */}
+
+          <div className="bg-surface p-6 rounded-card border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+            <h3 className="font-inter font-bold text-t-primary mb-3">Unrealized Profit</h3>
+
+            <p
+              className={`text-2xl font-bold mt-1 ${isUnrealizedProfit ? 'text-positive' : 'text-negative'}`}
+            >
+              {isUnrealizedProfit ? '+' : ''}
+              {formatINR(unrealizedProfit)}
+            </p>
+            <div
+              className={`mt-4 flex items-center gap-1 text-xs ${isUnrealizedProfit ? 'text-positive' : 'text-negative'}`}
+            >
+              {isUnrealizedProfit ? (
+                <MdOutlineTrendingUp className="text-[14px]" />
+              ) : (
+                <MdOutlineTrendingDown className="text-[14px]" />
+              )}
+              <span>Paper profit on current holdings</span>
+            </div>
+          </div>
+
+          <div className=" bg-surface p-6 rounded-card border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+            <h3 className="font-inter font-bold text-t-primary mb-3">Realized Profit</h3>
+
+            <p
+              className={`text-2xl font-bold mt-1 ${isRealizedProfit ? 'text-positive' : 'text-negative'}`}
+            >
+              {isRealizedProfit ? '+' : ''}
+              {formatINR(realizedProfit)}
+            </p>
+            <div
+              className={`mt-4 flex items-center gap-1 text-xs ${isRealizedProfit ? 'text-positive' : 'text-negative'}`}
+            >
+              {isRealizedProfit ? (
+                <MdOutlineTrendingUp className="text-[14px]" />
+              ) : (
+                <MdOutlineTrendingDown className="text-[14px]" />
+              )}
+              <span>Profit from funds you sold</span>
+            </div>
+          </div>
+
+          <div className="bg-surface p-6 rounded-card border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+            <h3 className="font-inter font-bold text-t-primary mb-3">Total Profit</h3>
+
+            <p
+              className={`text-2xl font-bold ${isTotalProfit ? 'text-positive' : 'text-negative'}`}
+            >
+              {isTotalProfit ? '+' : ''}
+              {formatINR(totalProfit)}
+            </p>
+            <div
+              className={`mt-4 flex items-center gap-1 text-xs ${isTotalProfit ? 'text-positive' : 'text-negative'}`}
+            >
+              {isTotalProfit ? (
+                <MdOutlineTrendingUp className="text-[14px]" />
+              ) : (
+                <MdOutlineTrendingDown className="text-[14px]" />
+              )}
+              <span>Realized + Unrealized combined</span>
+            </div>
+          </div>
+        </div>
+        <div className="xl:col-span-4 grid grid-cols-1 gap-6">
+          {/* <div className="bg-surface p-6 rounded-card border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
           <p className="text-t-secondary text-sm font-medium">Total Invested</p>
           <p className="text-2xl font-bold mt-1 text-t-primary">{formatINR(totalInvested)}</p>
           <div className="mt-4 flex items-center gap-1 text-t-placeholder text-xs">
             <MdOutlineInfo className="text-[14px]" />
-            <span>All time principal</span>
+            <span>Invested amount in current holdings</span>
           </div>
-        </div>
+        </div> */}
 
-        <div className="bg-surface p-6 rounded-card border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-          <p className="text-t-secondary text-sm font-medium">Current Value</p>
-          <p className="text-2xl font-bold mt-1 text-t-primary">{formatINR(totalCurrentValue)}</p>
-          <div className="mt-4 flex items-center gap-1 text-t-placeholder text-xs">
-            <MdOutlineTrendingUp className="text-[14px]" />
-            <span>
-              {isProfit ? '+' : ''}
-              {formatPercent(totalReturnPercent)} growth
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-surface p-6 rounded-card border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-          <p className="text-t-secondary text-sm font-medium">Unrealized P/L</p>
-          <p className={`text-2xl font-bold mt-1 ${isProfit ? 'text-positive' : 'text-negative'}`}>
-            {isProfit ? '+' : ''}
-            {formatINR(totalProfitLoss)}
-          </p>
-          <div className="mt-4 flex items-center gap-1 text-t-placeholder text-xs">
-            <MdOutlineCallMade className="text-[14px]" />
-            <span>{isProfit ? 'Absolute gain' : 'Absolute loss'}</span>
-          </div>
-        </div>
-
-        <div className="bg-surface p-6 rounded-card border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-          <p className="text-t-secondary text-sm font-medium">Portfolio Health</p>
-          <p className="text-2xl font-bold mt-1 text-t-primary">{healthScore}/100</p>
-          <div className="mt-4 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-1000 ${healthScore > 70 ? 'bg-green-500' : healthScore > 40 ? 'bg-amber-500' : 'bg-red-500'}`}
-              style={{ width: `${healthScore}%` }}
-            ></div>
+          <div className="xl:col-span-4 bg-surface p-6 rounded-card border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+            <div className="flex justify-between items-center  gap-2 mb-4">
+              <h3 className="font-inter font-bold text-t-primary">Portfolio Health</h3>
+              <p className="text-2xl font-bold mt-1 text-t-primary">{healthScore}/100</p>
+            </div>
+            <div className="mt-4 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-1000 ${healthScore > 70 ? 'bg-green-500' : healthScore > 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                style={{ width: `${healthScore}%` }}
+              ></div>
+            </div>
+            <div className="mt-6 flex items-center gap-1 text-t-placeholder text-xs">
+              <MdOutlineCallMade className="text-[14px]" />
+              <span>Based on diversification, allocation and SIP consistency</span>
+            </div>
           </div>
         </div>
       </div>
