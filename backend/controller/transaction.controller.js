@@ -1,5 +1,16 @@
 const Transaction = require("../models/Transaction");
 
+const getPagination = (query) => {
+  const page = Math.max(1, Number(query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(query.limit) || 25));
+
+  return {
+    page,
+    limit,
+    skip: (page - 1) * limit,
+  };
+};
+
 /**
  * Retrieves a filtered list of transactions for the user.
  * GET /api/transactions
@@ -8,6 +19,7 @@ const Transaction = require("../models/Transaction");
 exports.getTransactions = async (req, res) => {
   try {
     const { type, scheme_code, from, to } = req.query;
+    const { page, limit, skip } = getPagination(req.query);
 
     let filter = { userID: req.user._id };
 
@@ -30,13 +42,20 @@ exports.getTransactions = async (req, res) => {
     }
 
     // Use .lean() for faster performance as we don't need Mongoose model methods here
-    const transactions = await Transaction.find(filter)
-      .sort({ date: -1 })
-      .lean();
+    const [transactions, total] = await Promise.all([
+      Transaction.find(filter).sort({ date: -1 }).skip(skip).limit(limit).lean(),
+      Transaction.countDocuments(filter),
+    ]);
 
     res.status(200).json({
       success: true,
       data: transactions,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
     });
   } catch (error) {
     console.error("[GetTransactions Error]", error);

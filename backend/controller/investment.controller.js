@@ -2,17 +2,41 @@ const Investment = require("../models/Investment");
 const { createInvestment, processSell } = require("../services/investment.service");
 const { createTransaction } = require("../services/transaction.service");
 
+const getPagination = (query) => {
+  const page = Math.max(1, Number(query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(query.limit) || 25));
+
+  return {
+    page,
+    limit,
+    skip: (page - 1) * limit,
+  };
+};
+
 /**
  * Retrieves all investments for the logged-in user.
  * GET /api/investments/
  */
 exports.getInvestments = async (req, res) => {
   try {
-    const investments = await Investment.find({ userID: req.user._id })
-      .sort({ scheme_name: 1 })
-      .lean();
+    const { page, limit, skip } = getPagination(req.query);
+    const filter = { userID: req.user._id };
+
+    const [investments, total] = await Promise.all([
+      Investment.find(filter).sort({ scheme_name: 1 }).skip(skip).limit(limit).lean(),
+      Investment.countDocuments(filter),
+    ]);
     
-    res.status(200).json({ success: true, data: investments });
+    res.status(200).json({
+      success: true,
+      data: investments,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -25,9 +49,12 @@ exports.getInvestments = async (req, res) => {
 exports.createInvestment = async (req, res) => {
   try {
     const investment = await createInvestment({ userID: req.user._id, ...req.body });
-    
+
     if (investment?.error) {
-      return res.status(400).json({ success: false, message: investment.error });
+      return res.status(400).json({
+        success: false,
+        message: investment.error,
+      });
     }
 
     // Register transaction event
