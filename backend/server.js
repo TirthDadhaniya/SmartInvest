@@ -5,10 +5,12 @@ const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const connectDB = require("./db/db");
 const { requestLogger } = require("./middleware/requestLogger");
+const { validateEnv } = require("./config/env");
 
 // ─── Environment ──────────────────────────────────────────────────────────────
 // MUST be called before reading any process.env values
 dotenv.config();
+validateEnv();
 
 const PORT = process.env.PORT || 5000;
 
@@ -16,6 +18,7 @@ const PORT = process.env.PORT || 5000;
 connectDB();
 
 const app = express();
+app.set("trust proxy", 1);
 
 // ─── Global Rate Limiter ──────────────────────────────────────────────────────
 // Prevents abuse: 100 requests per 15 minutes per IP in production.

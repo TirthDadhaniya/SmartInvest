@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { getCookieOptions } = require("../config/env");
 
 // GENERATE Token
 const generateToken = (id) => {
@@ -47,9 +48,7 @@ exports.registerUser = async (req, res) => {
       };
 
       res.cookie("token", generateToken(user._id), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        ...getCookieOptions(),
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       });
 
@@ -88,7 +87,7 @@ exports.loginUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(404).json({
+      return res.status(401).json({
         success: false,
         message: "Invalid credentials",
       });
@@ -98,16 +97,14 @@ exports.loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.passwordHash);
 
     if (!isMatch) {
-      return res.status(400).json({
+      return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Invalid credentials",
       });
     }
 
     res.cookie("token", generateToken(user._id), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      ...getCookieOptions(),
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
@@ -208,11 +205,7 @@ exports.updateUser = async (req, res) => {
 // Logout
 exports.logoutUser = async (req, res) => {
   try {
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-    });
+    res.clearCookie("token", getCookieOptions());
 
     res.status(200).json({
       success: true,
