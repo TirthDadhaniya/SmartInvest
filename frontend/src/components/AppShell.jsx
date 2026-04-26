@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import {
   MdOutlineDashboard,
   MdDashboard,
@@ -19,8 +19,8 @@ import {
   MdDone,
 } from 'react-icons/md';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
-import { PortfolioContext } from '../context/PortfolioContext';
+import { AuthContext } from '../context/auth-context';
+import { PortfolioContext } from '../context/portfolio-context';
 import { formatINR } from '../utils/formatters';
 
 const AppShell = () => {
@@ -38,20 +38,8 @@ const AppShell = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isNotifOpen, setNotifOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-
-  // TASK 5: Sync context notifications to local state
-  useEffect(() => {
-    if (portNotifications && portNotifications.length > 0) {
-      setNotifications(prev => {
-        // Only add if not already present by ID
-        const existingIds = new Set(prev.map(n => n.id));
-        const newNotifs = portNotifications.filter(n => !existingIds.has(n.id));
-        if (newNotifs.length === 0) return prev;
-        return [...newNotifs, ...prev];
-      });
-    }
-  }, [portNotifications]);
+  const [readNotificationIds, setReadNotificationIds] = useState(() => new Set());
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState(() => new Set());
 
   const notifRef = useRef(null);
   const profileRef = useRef(null);
@@ -76,9 +64,16 @@ const AppShell = () => {
     return () => clearTimeout(timer);
   }, [location.pathname]);
 
-  useEffect(() => {
+  const notifications = useMemo(() => {
     const tips = rawData?.tips || [];
-    const nextNotifications = [
+    const portfolioNotifications = (portNotifications || []).map((notification, index) => ({
+      id: notification.id || `portfolio-${index}`,
+      title: notification.title || 'Portfolio Tip',
+      message: notification.message || notification.text || '',
+      isRead: Boolean(notification.isRead),
+    }));
+
+    const summaryNotifications = [
       {
         id: 'health-score',
         title: 'Portfolio Health',
@@ -99,8 +94,26 @@ const AppShell = () => {
       })),
     ];
 
-    setNotifications(nextNotifications);
-  }, [rawData, totalCurrentValue, totalReturnPercent]);
+    const seen = new Set();
+    return [...portfolioNotifications, ...summaryNotifications]
+      .filter(notification => {
+        if (!notification.message || dismissedNotificationIds.has(notification.id)) return false;
+        if (seen.has(notification.id)) return false;
+        seen.add(notification.id);
+        return true;
+      })
+      .map(notification => ({
+        ...notification,
+        isRead: notification.isRead || readNotificationIds.has(notification.id),
+      }));
+  }, [
+    dismissedNotificationIds,
+    portNotifications,
+    rawData,
+    readNotificationIds,
+    totalCurrentValue,
+    totalReturnPercent,
+  ]);
 
   // Sidebar path and icons
   const navItems = [
@@ -161,19 +174,19 @@ const AppShell = () => {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const markNotificationAsRead = notificationId => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === notificationId ? { ...notification, isRead: true } : notification
-      )
-    );
+    setReadNotificationIds(prev => new Set(prev).add(notificationId));
   };
 
   const dismissNotification = notificationId => {
-    setNotifications(prev => prev.filter(notification => notification.id !== notificationId));
+    setDismissedNotificationIds(prev => new Set(prev).add(notificationId));
   };
 
   const markAllNotificationsAsRead = () => {
-    setNotifications(prev => prev.map(notification => ({ ...notification, isRead: true })));
+    setReadNotificationIds(prev => {
+      const next = new Set(prev);
+      notifications.forEach(notification => next.add(notification.id));
+      return next;
+    });
   };
 
   // Logout function
