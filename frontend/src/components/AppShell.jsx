@@ -484,7 +484,7 @@ const AppShell = () => {
 
         {/* Dynamic Page Content */}
         <main className="flex-1 overflow-y-auto w-full custom-scrollbar">
-          <div className="max-w-[1400px] mx-auto w-full">
+          <div className="max-w-350 mx-auto w-full">
             <Outlet />
           </div>
         </main>
