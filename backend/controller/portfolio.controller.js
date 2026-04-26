@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Goal = require("../models/Goal");
 const SIP = require("../models/SIP");
+const Transaction = require("../models/Transaction");
 const portfolioService = require("../services/portfolio.service");
 const calcService = require("../services/calculation.service");
 const axios = require("axios");
@@ -13,6 +14,21 @@ exports.summary = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    const sellTransactions = await Transaction.find({ userID: userId, type: "sell" })
+      .select("amount profitLoss")
+      .lean();
+
+    const realizedProfit = sellTransactions.reduce(
+      (sum, tx) => sum + (Number.isFinite(tx.profitLoss) ? tx.profitLoss : 0),
+      0,
+    );
+
+    const soldFundsCostBasis = sellTransactions.reduce((sum, tx) => {
+      const amount = Number(tx.amount) || 0;
+      const profitLoss = Number.isFinite(tx.profitLoss) ? tx.profitLoss : 0;
+      return sum + Math.max(0, amount - profitLoss);
+    }, 0);
+
     // Fetch All Data Concurrently for speed
     const [stats, goalsCount, sipsCount, user] = await Promise.all([
       portfolioService.getPortfolioStats(userId),
@@ -22,6 +38,10 @@ exports.summary = async (req, res) => {
     ]);
 
     const { totalInvested, totalCurrentValue, investments } = stats;
+    const unrealizedProfit = totalCurrentValue - totalInvested;
+    const totalProfit = realizedProfit + unrealizedProfit;
+    const denominator = totalInvested + soldFundsCostBasis;
+    const totalReturnPercent = denominator > 0 ? (totalProfit / denominator) * 100 : 0;
 
     if (investments.length === 0) {
       return res.status(200).json({
@@ -30,7 +50,12 @@ exports.summary = async (req, res) => {
           financials: {
             netWorth: "0.00",
             totalInvested: "0.00",
+            totalCurrentValue: "0.00",
+            unrealizedProfit: "0.00",
+            realizedProfit: realizedProfit.toFixed(2),
+            totalProfit: totalProfit.toFixed(2),
             totalProfitLoss: "0.00",
+            totalReturnPercent: totalReturnPercent.toFixed(2),
             totalPLPercentage: "0.00%",
           },
           health: {
@@ -82,8 +107,8 @@ exports.summary = async (req, res) => {
       };
     });
 
-    const totalProfitLoss = totalCurrentValue - totalInvested;
-    const totalPLPercentage = totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
+    const totalProfitLoss = unrealizedProfit;
+    const totalPLPercentage = totalInvested > 0 ? (unrealizedProfit / totalInvested) * 100 : 0;
     const equityPercentage = totalCurrentValue > 0 ? (equityCurrentValue / totalCurrentValue) * 100 : 0;
     const weightedExpenseRatio = totalInvested > 0 ? totalExpenseWeight / totalInvested : 0;
     const categoryCount = uniqueCategories.size;
@@ -149,7 +174,12 @@ exports.summary = async (req, res) => {
         financials: {
           netWorth: totalCurrentValue.toFixed(2),
           totalInvested: totalInvested.toFixed(2),
+          totalCurrentValue: totalCurrentValue.toFixed(2),
+          unrealizedProfit: unrealizedProfit.toFixed(2),
+          realizedProfit: realizedProfit.toFixed(2),
+          totalProfit: totalProfit.toFixed(2),
           totalProfitLoss: totalProfitLoss.toFixed(2),
+          totalReturnPercent: totalReturnPercent.toFixed(2),
           totalPLPercentage: totalPLPercentage.toFixed(2) + "%",
         },
         health: {
