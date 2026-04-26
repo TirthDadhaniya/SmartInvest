@@ -25,6 +25,11 @@ const passwordSchema = z
   .regex(/[a-z]/, "Password must contain at least one lowercase letter")
   .regex(/[0-9]/, "Password must contain at least one number");
 
+const paginationQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+});
+
 /* ── Route Schemas ── */
 
 const routeSchemas = {
@@ -61,6 +66,9 @@ const routeSchemas = {
   },
 
   investment: {
+    getInvestments: z.object({
+      query: paginationQuerySchema,
+    }),
     create: z.object({
       body: z.object({
         scheme_code: z.coerce.number().int().positive(),
@@ -200,6 +208,7 @@ const routeSchemas = {
           from: isoDateStringSchema.optional(),
           to: isoDateStringSchema.optional(),
         })
+        .merge(paginationQuerySchema)
         .refine(
           (query) => {
             if (!query.from || !query.to) {
