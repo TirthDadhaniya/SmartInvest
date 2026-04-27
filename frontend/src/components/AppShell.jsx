@@ -43,6 +43,7 @@ const AppShell = () => {
 
   const notifRef = useRef(null);
   const profileRef = useRef(null);
+  const mainScrollRef = useRef(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -63,6 +64,61 @@ const AppShell = () => {
     const timer = setTimeout(() => setSidebarOpen(false), 0);
     return () => clearTimeout(timer);
   }, [location.pathname]);
+
+  // Keep navigation UX predictable: reset to top on page switch,
+  // and if a target id is provided (hash/state), scroll it into view with offset.
+  useEffect(() => {
+    const container = mainScrollRef.current;
+    if (!container) return;
+
+    const scrollTopNow = () => {
+      container.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    };
+
+    const stateTargetId = location.state?.scrollToId;
+    const hashTargetId = location.hash ? decodeURIComponent(location.hash.slice(1)) : '';
+    const targetId = stateTargetId || hashTargetId;
+
+    if (!targetId) {
+      scrollTopNow();
+      return;
+    }
+
+    const topOffset =
+      typeof location.state?.scrollOffset === 'number'
+        ? Math.max(0, location.state.scrollOffset)
+        : 20;
+    const maxAttempts = 60;
+    let attempts = 0;
+    let timerId;
+
+    const scrollToTarget = () => {
+      const element = document.getElementById(targetId);
+
+      if (element) {
+        const containerRect = container.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const targetTop = container.scrollTop + (elementRect.top - containerRect.top) - topOffset;
+
+        container.scrollTo({ top: Math.max(0, targetTop), left: 0, behavior: 'smooth' });
+        return;
+      }
+
+      attempts += 1;
+      if (attempts <= maxAttempts) {
+        timerId = setTimeout(scrollToTarget, 100);
+      } else {
+        scrollTopNow();
+      }
+    };
+
+    scrollTopNow();
+    timerId = setTimeout(scrollToTarget, 0);
+
+    return () => {
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [location.hash, location.key, location.pathname, location.search, location.state]);
 
   const notifications = useMemo(() => {
     const tips = rawData?.tips || [];
@@ -483,7 +539,7 @@ const AppShell = () => {
         </header>
 
         {/* Dynamic Page Content */}
-        <main className="flex-1 overflow-y-auto w-full custom-scrollbar">
+        <main ref={mainScrollRef} className="flex-1 overflow-y-auto w-full custom-scrollbar">
           <div className="max-w-350 mx-auto w-full">
             <Outlet />
           </div>
