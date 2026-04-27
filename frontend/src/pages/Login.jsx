@@ -1,19 +1,20 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext } from 'react';
 import {
   MdOutlineAccountBalanceWallet,
   MdOutlineMail,
   MdOutlineLock,
   MdOutlineArrowForward,
   MdOutlineEnhancedEncryption,
-} from "react-icons/md";
-import { useNavigate, Link, useLocation } from "react-router-dom";
-import api from "../api/axios";
-import { AuthContext } from "../context/AuthContext";
+} from 'react-icons/md';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import api from '../api/axios';
+import { AuthContext } from '../context/auth-context';
+import { isBlank, isValidEmail } from '../utils/validation';
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -22,32 +23,46 @@ const Login = () => {
 
   const successMessage = location.state?.message;
 
-  const handleLogin = async (e) => {
+  const handleLogin = async e => {
     e.preventDefault();
-    setError("");
+    setError('');
     setFieldErrors({});
+
+    const nextFieldErrors = {};
+    if (isBlank(email)) {
+      nextFieldErrors.email = 'Email is required';
+    } else if (!isValidEmail(email)) {
+      nextFieldErrors.email = 'Enter a valid email address';
+    }
+
+    if (isBlank(password)) {
+      nextFieldErrors.password = 'Password is required';
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await api.post("/api/auth/login", { email, password });
+      const res = await api.post('/api/auth/login', { email, password });
       if (res.data.success) {
         login(res.data.data.user);
-        navigate("/dashboard");
+        navigate('/dashboard');
       }
     } catch (err) {
       if (err.response?.data?.errors) {
         const errors = err.response.data.errors;
         const newFieldErrors = {};
-        errors.forEach((errItem) => {
-          const fieldName = errItem.field.replace("body.", "");
+        errors.forEach(errItem => {
+          const fieldName = errItem.field.replace('body.', '');
           newFieldErrors[fieldName] = errItem.message;
         });
         setFieldErrors(newFieldErrors);
       } else {
-        setError(
-          err.response?.data?.message ||
-            "Failed to login. Please check your credentials.",
-        );
+        setError(err.response?.data?.message || 'Failed to login. Please check your credentials.');
       }
     } finally {
       setLoading(false);
@@ -91,7 +106,7 @@ const Login = () => {
           </div>
           <Link
             to="/register"
-            className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-slate-100 text-t-primary text-sm font-bold hover:bg-slate-200 transition-colors border-none no-underline"
+            className="flex min-w-21 cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-slate-100 text-t-primary text-sm font-bold hover:bg-slate-200 transition-colors border-none no-underline"
           >
             <span>Register</span>
           </Link>
@@ -99,18 +114,19 @@ const Login = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-background-light to-primary/5">
-        <div className="max-w-[1440px] w-full flex justify-center">
-          <div className="w-full max-w-[480px] bg-surface rounded-xl shadow-xl border border-border overflow-hidden">
+      <main className="flex-1 flex items-center justify-center p-6 bg-linear-to-br from-background-light to-primary/5">
+        {/* Background */}
+        <div className="max-w-360 w-full flex justify-center">
+          {/* Card Container */}
+          <div className="w-full max-w-120 bg-surface rounded-xl shadow-xl border border-border overflow-hidden">
+            {/* Card Content */}
             <div className="p-8 md:p-10">
               {/* header */}
               <div className="text-center mb-8">
                 <h1 className="text-t-primary text-3xl font-bold leading-tight tracking-tight mb-2">
                   Welcome Back
                 </h1>
-                <p className="text-t-secondary">
-                  Secure login to your investment portfolio.
-                </p>
+                <p className="text-t-secondary">Secure login to your investment portfolio.</p>
               </div>
 
               {/* notification messages */}
@@ -128,19 +144,17 @@ const Login = () => {
 
               <form className="space-y-6" onSubmit={handleLogin} noValidate>
                 <div className="flex flex-col gap-2">
-                  <label className="text-t-primary text-sm font-semibold">
-                    Email Address
-                  </label>
+                  <label className="text-t-primary text-sm font-semibold">Email Address</label>
                   <div className="relative">
                     <MdOutlineMail className="absolute left-4 top-1/2 -translate-y-1/2 text-t-placeholder text-xl" />
                     <input
-                      className={`w-full pl-12 pr-4 py-3.5 rounded-lg border bg-surface text-t-primary focus:ring-2 focus:border-transparent outline-none transition-all placeholder:text-t-placeholder ${fieldErrors.email ? "border-red-400 focus:ring-red-400" : "border-border focus:ring-primary"}`}
+                      className={`w-full pl-12 pr-4 py-3.5 rounded-lg border bg-surface text-t-primary focus:ring-2 focus:border-transparent outline-none transition-all placeholder:text-t-placeholder ${fieldErrors.email ? 'border-red-400 focus:ring-red-400' : 'border-border focus:ring-primary'}`}
                       placeholder="name@company.com"
                       type="email"
                       value={email}
-                      onChange={(e) => {
+                      onChange={e => {
                         setEmail(e.target.value);
-                        setFieldErrors({ ...fieldErrors, email: "" });
+                        setFieldErrors({ ...fieldErrors, email: '' });
                       }}
                     />
                   </div>
@@ -151,20 +165,18 @@ const Login = () => {
 
                 <div className="flex flex-col gap-2">
                   <div className="flex justify-between items-center">
-                    <label className="text-t-primary text-sm font-semibold">
-                      Password
-                    </label>
+                    <label className="text-t-primary text-sm font-semibold">Password</label>
                   </div>
                   <div className="relative">
                     <MdOutlineLock className="absolute left-4 top-1/2 -translate-y-1/2 text-t-placeholder text-xl" />
                     <input
-                      className={`w-full pl-12 pr-4 py-3.5 rounded-lg border bg-surface text-t-primary focus:ring-2 focus:border-transparent outline-none transition-all placeholder:text-t-placeholder ${fieldErrors.password ? "border-red-400 focus:ring-red-400" : "border-border focus:ring-primary"}`}
+                      className={`w-full pl-12 pr-4 py-3.5 rounded-lg border bg-surface text-t-primary focus:ring-2 focus:border-transparent outline-none transition-all placeholder:text-t-placeholder ${fieldErrors.password ? 'border-red-400 focus:ring-red-400' : 'border-border focus:ring-primary'}`}
                       placeholder="••••••••"
                       type="password"
                       value={password}
-                      onChange={(e) => {
+                      onChange={e => {
                         setPassword(e.target.value);
-                        setFieldErrors({ ...fieldErrors, password: "" });
+                        setFieldErrors({ ...fieldErrors, password: '' });
                       }}
                     />
                   </div>
@@ -192,7 +204,7 @@ const Login = () => {
               </form>
 
               <p className="text-center mt-8 text-sm text-t-secondary">
-                Don't have an account?{" "}
+                Don't have an account?{' '}
                 <Link
                   to="/register"
                   className="text-primary font-semibold hover:underline no-underline"
@@ -209,22 +221,13 @@ const Login = () => {
       <footer className="py-6 px-10 flex flex-col md:flex-row items-center justify-between text-xs text-t-secondary border-t border-border bg-surface">
         <p>&copy; 2026 SmartInvest. All rights reserved.</p>
         <div className="flex gap-6 mt-4 md:mt-0">
-          <Link
-            to="#"
-            className="hover:text-primary transition-colors no-underline text-inherit"
-          >
+          <Link to="#" className="hover:text-primary transition-colors no-underline text-inherit">
             Privacy Policy
           </Link>
-          <Link
-            to="#"
-            className="hover:text-primary transition-colors no-underline text-inherit"
-          >
+          <Link to="#" className="hover:text-primary transition-colors no-underline text-inherit">
             Terms of Service
           </Link>
-          <Link
-            to="#"
-            className="hover:text-primary transition-colors no-underline text-inherit"
-          >
+          <Link to="#" className="hover:text-primary transition-colors no-underline text-inherit">
             Security
           </Link>
         </div>

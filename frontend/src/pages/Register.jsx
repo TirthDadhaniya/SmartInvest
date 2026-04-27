@@ -1,66 +1,90 @@
-import { useState } from "react";
+import { useState } from 'react';
 import {
   MdOutlineAccountBalanceWallet,
   MdOutlinePerson,
   MdOutlineMail,
   MdOutlineLock,
   MdOutlineArrowForward,
-} from "react-icons/md";
-import { useNavigate, Link } from "react-router-dom";
-import api from "../api/axios";
+} from 'react-icons/md';
+import { useNavigate, Link } from 'react-router-dom';
+import api from '../api/axios';
+import { isBlank, isValidEmail, isValidPassword } from '../utils/validation';
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
   });
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
+  const handleChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setFieldErrors({ ...fieldErrors, [e.target.name]: "" });
+    setFieldErrors({ ...fieldErrors, [e.target.name]: '' });
   };
 
-  const handleRegister = async (e) => {
+  const handleRegister = async e => {
     e.preventDefault();
-    setError("");
+    setError('');
     setFieldErrors({});
 
-    // Basic frontend check for confirm password before API hit
-    if (formData.password !== formData.confirmPassword) {
-      setFieldErrors({ confirmPassword: "Passwords do not match." });
+    const nextFieldErrors = {};
+    if (isBlank(formData.name)) {
+      nextFieldErrors.name = 'Name is required.';
+    }
+
+    if (isBlank(formData.email)) {
+      nextFieldErrors.email = 'Email is required.';
+    } else if (!isValidEmail(formData.email)) {
+      nextFieldErrors.email = 'Enter a valid email address.';
+    }
+
+    if (isBlank(formData.password)) {
+      nextFieldErrors.password = 'Password is required.';
+    } else if (!isValidPassword(formData.password)) {
+      nextFieldErrors.password =
+        'Password must be at least 8 characters with uppercase, lowercase, and number.';
+    }
+
+    if (isBlank(formData.confirmPassword)) {
+      nextFieldErrors.confirmPassword = 'Please confirm your password.';
+    } else if (formData.password !== formData.confirmPassword) {
+      nextFieldErrors.confirmPassword = 'Passwords do not match.';
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
       return;
     }
 
     setLoading(true);
 
     try {
-      const res = await api.post("/api/auth/register", {
+      const res = await api.post('/api/auth/register', {
         name: formData.name,
         email: formData.email,
         password: formData.password,
       });
 
       if (res.data.success) {
-        navigate("/login", { state: { message: "Account created successfully. Please log in." } });
+        navigate('/login', { state: { message: 'Account created successfully. Please log in.' } });
       }
     } catch (err) {
       if (err.response?.data?.errors) {
         const errors = err.response.data.errors;
         const newFieldErrors = {};
-        errors.forEach((errItem) => {
+        errors.forEach(errItem => {
           // errItem.field comes from Zod like 'body.email', we just want 'email'
           const fieldName = errItem.field.replace('body.', '');
           newFieldErrors[fieldName] = errItem.message;
         });
         setFieldErrors(newFieldErrors);
       } else {
-        setError(err.response?.data?.message || "Failed to register. Please try again.");
+        setError(err.response?.data?.message || 'Failed to register. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -75,32 +99,43 @@ const Register = () => {
           <div className="size-8 flex items-center justify-center bg-primary/10 rounded-lg">
             <MdOutlineAccountBalanceWallet className="text-primary" />
           </div>
-          <h2 className="text-t-primary text-xl font-bold leading-tight tracking-tight">SmartInvest</h2>
+          <h2 className="text-t-primary text-xl font-bold leading-tight tracking-tight">
+            SmartInvest
+          </h2>
         </div>
         <div className="flex flex-1 justify-end gap-8">
           <div className="hidden md:flex items-center gap-9">
-            <Link to="#" className="text-t-secondary text-sm font-medium hover:text-primary transition-colors">
+            <Link
+              to="#"
+              className="text-t-secondary text-sm font-medium hover:text-primary transition-colors"
+            >
               Features
             </Link>
-            <Link to="#" className="text-t-secondary text-sm font-medium hover:text-primary transition-colors">
+            <Link
+              to="#"
+              className="text-t-secondary text-sm font-medium hover:text-primary transition-colors"
+            >
               Pricing
             </Link>
-            <Link to="#" className="text-t-secondary text-sm font-medium hover:text-primary transition-colors">
+            <Link
+              to="#"
+              className="text-t-secondary text-sm font-medium hover:text-primary transition-colors"
+            >
               About
             </Link>
           </div>
           <Link
             to="/login"
-            className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-slate-100 text-t-primary text-sm font-bold hover:bg-slate-200 transition-colors border-none no-underline"
+            className="flex min-w-21 cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-slate-100 text-t-primary text-sm font-bold hover:bg-slate-200 transition-colors border-none no-underline"
           >
             <span>Log In</span>
           </Link>
         </div>
       </header>
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-background-light to-primary/5">
-        <div className="max-w-[1440px] w-full flex justify-center">
-          <div className="w-full max-w-[520px] bg-surface rounded-xl shadow-xl border border-border overflow-hidden">
+      <main className="flex-1 flex items-center justify-center p-6 bg-linear-to-br from-background-light to-primary/5">
+        <div className="max-w-360 w-full flex justify-center">
+          <div className="w-full max-w-130 bg-surface rounded-xl shadow-xl border border-border overflow-hidden">
             <div className="p-8 md:p-10">
               <div className="text-center mb-8">
                 <h1 className="text-t-primary text-3xl font-bold leading-tight tracking-tight mb-2">
@@ -128,9 +163,11 @@ const Register = () => {
                       onChange={handleChange}
                     />
                   </div>
-                  {fieldErrors.name && <p className="text-xs text-red-500 mt-1">{fieldErrors.name}</p>}
+                  {fieldErrors.name && (
+                    <p className="text-xs text-red-500 mt-1">{fieldErrors.name}</p>
+                  )}
                 </div>
-                
+
                 <div className="flex flex-col gap-2">
                   <label className="text-t-primary text-sm font-semibold">Email Address</label>
                   <div className="relative">
@@ -144,9 +181,11 @@ const Register = () => {
                       onChange={handleChange}
                     />
                   </div>
-                  {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
+                  {fieldErrors.email && (
+                    <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>
+                  )}
                 </div>
-                
+
                 <div className="flex flex-col gap-2">
                   <label className="text-t-primary text-sm font-semibold">Password</label>
                   <div className="relative">
@@ -163,10 +202,12 @@ const Register = () => {
                   {fieldErrors.password ? (
                     <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>
                   ) : (
-                    <p className="text-xs text-t-secondary mt-1">Must be at least 8 characters with 1 uppercase, 1 lowercase & 1 number.</p>
+                    <p className="text-xs text-t-secondary mt-1">
+                      Must be at least 8 characters with 1 uppercase, 1 lowercase & 1 number.
+                    </p>
                   )}
                 </div>
-                
+
                 <div className="flex flex-col gap-2">
                   <label className="text-t-primary text-sm font-semibold">Confirm Password</label>
                   <div className="relative">
@@ -180,9 +221,11 @@ const Register = () => {
                       onChange={handleChange}
                     />
                   </div>
-                  {fieldErrors.confirmPassword && <p className="text-xs text-red-500 mt-1">{fieldErrors.confirmPassword}</p>}
+                  {fieldErrors.confirmPassword && (
+                    <p className="text-xs text-red-500 mt-1">{fieldErrors.confirmPassword}</p>
+                  )}
                 </div>
-                
+
                 <div className="pt-4">
                   <button
                     type="submit"
@@ -202,8 +245,11 @@ const Register = () => {
               </form>
 
               <p className="text-center mt-8 text-sm text-t-secondary">
-                Already have an account?{" "}
-                <Link to="/login" className="text-primary font-semibold hover:underline no-underline">
+                Already have an account?{' '}
+                <Link
+                  to="/login"
+                  className="text-primary font-semibold hover:underline no-underline"
+                >
                   Log in here
                 </Link>
               </p>
