@@ -140,6 +140,29 @@ const Dashboard = () => {
       }));
   }, [portfolio, categoryColors, piePalette]);
 
+  const getGoalProgressPercent = goal => {
+    const derivedProgress =
+      goal.targetAmount > 0 ? ((goal.targetAmount - (goal.gap || 0)) / goal.targetAmount) * 100 : 0;
+    const rawProgress =
+      typeof goal.progressPercent === 'number' ? goal.progressPercent : derivedProgress;
+    return Math.min(100, Math.max(0, rawProgress || 0));
+  };
+
+  const formatGoalDate = dateValue =>
+    new Date(dateValue).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+  const topGoalGaps = useMemo(
+    () =>
+      [...goalGaps]
+        .sort((a, b) => getGoalProgressPercent(b) - getGoalProgressPercent(a))
+        .slice(0, 2),
+    [goalGaps]
+  );
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -538,47 +561,83 @@ const Dashboard = () => {
         </div>
 
         {/* Goals Card moved beside Asset Allocation */}
-        <div className="col-span-12 xl:col-span-4 bg-surface p-6 rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
-          <p className="text-[10px] uppercase tracking-widest text-t-secondary font-bold mb-4">
-            FINANCIAL GOALS
-          </p>
+        <div className="col-span-12 xl:col-span-4 bg-surface p-6 rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-[11px] uppercase tracking-widest text-t-secondary font-bold m-0">
+              FINANCIAL GOALS
+            </p>
+            {goalGaps.length > 0 && (
+              <Link
+                to="/profile#financial-goals-section"
+                className="text-[11px] font-bold uppercase tracking-wider text-primary hover:underline no-underline"
+              >
+                View All
+              </Link>
+            )}
+          </div>
           {goalGaps.length === 0 ? (
-            <div className="text-center py-4 text-t-secondary text-sm">
-              <Link to="/profile" className="text-primary font-bold hover:underline no-underline">
+            <div className="text-center py-4 text-t-secondary text-sm flex-1 flex items-center justify-center">
+              <Link
+                to="/profile#financial-goals-section"
+                className="text-primary font-bold hover:underline no-underline"
+              >
                 Set your first goal →
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
-              {goalGaps.slice(0, 3).map(goal => (
-                <div
-                  key={goal._id}
-                  className={`p-3 rounded-lg ${goal.gapStatus === 'on_track' ? 'bg-slate-50' : 'bg-red-50/50 border border-red-100'}`}
-                >
-                  <div className="flex justify-between items-start mb-1 gap-2">
-                    <p className="text-[12px] font-bold text-t-primary leading-5">{goal.name}</p>
-                    <span
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight whitespace-nowrap ${
+            <div className="space-y-3 flex-1 flex flex-col">
+              {topGoalGaps.map(goal => {
+                const progress = getGoalProgressPercent(goal);
+                const currentAmount =
+                  goal.targetAmount > 0 ? (goal.targetAmount * progress) / 100 : 0;
+
+                return (
+                  <div
+                    key={goal._id}
+                    className={`p-3 rounded-lg flex flex-col justify-between border overflow-hidden ${goal.gapStatus === 'on_track' ? 'border-green-100' : 'border-red-100'}`}
+                    style={{
+                      background:
                         goal.gapStatus === 'on_track'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}
-                    >
-                      {goal.gapStatus === 'on_track' ? 'On Track' : 'Behind Schedule'}
-                    </span>
-                  </div>
-                  <p
-                    className={`text-[10px] font-medium ${goal.gapStatus === 'on_track' ? 'text-slate-500' : 'text-red-600'}`}
+                          ? `linear-gradient(90deg, rgba(34, 197, 94, 0.20) ${progress}%, rgba(248, 250, 252, 0.96) ${progress}%)`
+                          : `linear-gradient(90deg, rgba(239, 68, 68, 0.16) ${progress}%, rgba(254, 242, 242, 0.90) ${progress}%)`,
+                    }}
                   >
-                    {goal.gapStatus === 'on_track'
-                      ? goal.gapMessage
-                          ?.replace(/^.*?(\d)/, '$1')
-                          .replace(/At your current.*?,\s*/, '') ||
-                        `Projected to complete ahead of schedule.`
-                      : `Need ${formatINR(goal.extraSIPNeeded)}/month extra to close gap.`}
-                  </p>
-                </div>
-              ))}
+                    <div className="flex justify-between items-start gap-3 mb-2">
+                      <p className="text-[14px] font-bold text-t-primary leading-5 pr-1">
+                        {goal.name}
+                      </p>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-tight whitespace-nowrap ${
+                          goal.gapStatus === 'on_track'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}
+                      >
+                        {goal.gapStatus === 'on_track' ? 'On Track' : 'Behind Schedule'}
+                      </span>
+                    </div>
+                    <div className="flex items-end justify-between gap-3 mb-2">
+                      <div>
+                        <p className="text-[12px] font-semibold text-t-primary m-0">
+                          {formatINR(currentAmount)} / {formatINR(goal.targetAmount || 0)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[16px] leading-none font-black text-t-primary">
+                          {progress.toFixed(0)}%
+                        </p>
+                      </div>
+                    </div>
+                    <p
+                      className={`text-[11px] font-medium leading-5 ${goal.gapStatus === 'on_track' ? 'text-slate-600' : 'text-red-700'}`}
+                    >
+                      {goal.gapStatus === 'on_track'
+                        ? `Can be completed till ${formatGoalDate(goal.targetDate)}`
+                        : `Need ${formatINR(goal.extraSIPNeeded)}/month extra to close gap.`}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
