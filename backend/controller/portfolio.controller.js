@@ -316,6 +316,34 @@ exports.getWhatIf = async (req, res) => {
     const yearsDiff = calcService.getYearsBetween(targetDate, new Date());
     const annualReturn = calcService.calculateCAGR(amount, currentValue, yearsDiff);
 
+    // Prepare chart data for the range
+    const chartData = history
+      .filter((item) => {
+        const [d, m, y] = item.date.split("-");
+        return new Date(`${y}-${m}-${d}`) >= targetDate;
+      })
+      .map((item) => ({
+        date: item.date,
+        nav: parseFloat(item.nav),
+      }))
+      .reverse();
+
+    // Ensure the chart starts exactly from the user's requested date
+    // (matches the purchase point logic)
+    if (chartData.length > 0) {
+      const [fd, fm, fy] = chartData[0].date.split("-");
+      const firstDataDate = new Date(`${fy}-${fm}-${fd}`);
+      if (firstDataDate > targetDate) {
+        const formattedTarget = `${String(targetDate.getDate()).padStart(2, "0")}-${String(
+          targetDate.getMonth() + 1,
+        ).padStart(2, "0")}-${targetDate.getFullYear()}`;
+        chartData.unshift({
+          date: formattedTarget,
+          nav: purchaseNAV,
+        });
+      }
+    }
+
     res.json({
       success: true,
       data: {
@@ -331,6 +359,7 @@ exports.getWhatIf = async (req, res) => {
         absoluteReturn: ((currentValue - amount) / amount) * 100,
         annualizedReturn: annualReturn * 100,
         holdingDays: Math.floor(yearsDiff * 365.25),
+        chartData,
       },
     });
   } catch (err) {

@@ -148,5 +148,4 @@ const getPortfolioStats = async (userId, options = {}) => {
 module.exports = {
   simplifyCategory,
   getPortfolioStats,
-  getLatestNAVs,
 };
