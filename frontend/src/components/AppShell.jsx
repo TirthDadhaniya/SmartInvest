@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   MdOutlineDashboard,
   MdDashboard,
@@ -13,15 +13,14 @@ import {
   MdOutlineSettings,
   MdClose,
   MdMenu,
-  MdOutlineNotifications,
   MdOutlinePerson,
   MdOutlineLogout,
-  MdDone,
 } from 'react-icons/md';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth-context';
 import { PortfolioContext } from '../context/portfolio-context';
 import { formatINR } from '../utils/formatters';
+import FundSearch from './FundSearch';
 
 const AppShell = () => {
   const location = useLocation();
@@ -31,26 +30,17 @@ const AppShell = () => {
     totalCurrentValue,
     totalReturnPercent,
     loading: portLoading,
-    rawData,
-    notifications: portNotifications,
   } = useContext(PortfolioContext);
 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [isNotifOpen, setNotifOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
-  const [readNotificationIds, setReadNotificationIds] = useState(() => new Set());
-  const [dismissedNotificationIds, setDismissedNotificationIds] = useState(() => new Set());
 
-  const notifRef = useRef(null);
   const profileRef = useRef(null);
   const mainScrollRef = useRef(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = event => {
-      if (notifRef.current && !notifRef.current.contains(event.target)) {
-        setNotifOpen(false);
-      }
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setProfileOpen(false);
       }
@@ -120,57 +110,6 @@ const AppShell = () => {
     };
   }, [location.hash, location.key, location.pathname, location.search, location.state]);
 
-  const notifications = useMemo(() => {
-    const tips = rawData?.tips || [];
-    const portfolioNotifications = (portNotifications || []).map((notification, index) => ({
-      id: notification.id || `portfolio-${index}`,
-      title: notification.title || 'Portfolio Tip',
-      message: notification.message || notification.text || '',
-      isRead: Boolean(notification.isRead),
-    }));
-
-    const summaryNotifications = [
-      {
-        id: 'health-score',
-        title: 'Portfolio Health',
-        message: `Current health score: ${rawData?.healthScore || 0}/100`,
-        isRead: false,
-      },
-      {
-        id: 'returns',
-        title: 'Return Snapshot',
-        message: `Overall return is ${Number(totalReturnPercent || 0).toFixed(2)}% on net worth ${formatINR(totalCurrentValue || 0)}.`,
-        isRead: false,
-      },
-      ...tips.slice(0, 2).map((tip, idx) => ({
-        id: `tip-${idx}`,
-        title: 'Portfolio Tip',
-        message: tip,
-        isRead: false,
-      })),
-    ];
-
-    const seen = new Set();
-    return [...portfolioNotifications, ...summaryNotifications]
-      .filter(notification => {
-        if (!notification.message || dismissedNotificationIds.has(notification.id)) return false;
-        if (seen.has(notification.id)) return false;
-        seen.add(notification.id);
-        return true;
-      })
-      .map(notification => ({
-        ...notification,
-        isRead: notification.isRead || readNotificationIds.has(notification.id),
-      }));
-  }, [
-    dismissedNotificationIds,
-    portNotifications,
-    rawData,
-    readNotificationIds,
-    totalCurrentValue,
-    totalReturnPercent,
-  ]);
-
   // Sidebar path and icons
   const navItems = [
     {
@@ -200,62 +139,14 @@ const AppShell = () => {
     { path: '/profile', label: 'Profile', icon: MdOutlinePerson, activeIcon: MdPerson },
   ];
 
-  const getPageTitle = () => {
-    const item = navItems.find(i => i.path === location.pathname);
-    if (item) return item.label;
-
-    // Handle dynamic routes
-    if (location.pathname.startsWith('/fund/')) return 'Fund Details';
-    if (location.pathname.startsWith('/profile/')) return 'Profile Settings';
-
-    return 'SmartInvest';
-  };
-
-  const getPageSubtitle = () => {
-    const subTitles = {
-      '/dashboard': 'Overview of your investment portfolio and health',
-      '/investments': 'Track performance and analyze your holdings',
-      '/manageFunds': 'Add new investments and manage your active SIPs',
-      '/transactions': 'History of all your buy and sell activities',
-      '/profile': 'Manage your goals, risk profile, and account settings',
-    };
-
-    if (subTitles[location.pathname]) return subTitles[location.pathname];
-    if (location.pathname.startsWith('/fund/'))
-      return 'Detailed analysis and historical performance';
-
-    return 'Your personal wealth manager';
-  };
-
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  const markNotificationAsRead = notificationId => {
-    setReadNotificationIds(prev => new Set(prev).add(notificationId));
-  };
-
-  const dismissNotification = notificationId => {
-    setDismissedNotificationIds(prev => new Set(prev).add(notificationId));
-  };
-
-  const markAllNotificationsAsRead = () => {
-    setReadNotificationIds(prev => {
-      const next = new Set(prev);
-      notifications.forEach(notification => next.add(notification.id));
-      return next;
-    });
-  };
-
   // Logout function
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const MdOutlinePersonIcon = MdPerson;
-
   return (
     <div className="flex h-screen bg-behind font-inter overflow-hidden">
-      {/* qfq */}
       <aside className="hidden lg:flex flex-col w-64 bg-surface border-r border-border shrink-0">
         {/* Logo & Branding */}
         <Link to="/dashboard" className="p-6 flex items-center gap-3 text-primary no-underline">
@@ -366,8 +257,8 @@ const AppShell = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Navbar */}
-        <header className="h-16 lg:h-20 bg-surface border-b border-border flex items-center justify-between px-4 md:px-8 shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="h-16 lg:h-20 bg-surface border-b border-border flex items-center justify-between px-4 md:px-8 shrink-0 gap-4">
+          <div className="flex items-center gap-4 flex-1 z-50">
             {/* Mobile Hamburger Menu */}
             <button
               className="lg:hidden p-2 text-t-secondary hover:bg-slate-50 rounded-lg border-none bg-transparent"
@@ -375,11 +266,16 @@ const AppShell = () => {
             >
               <MdMenu size={24} />
             </button>
-            <div>
-              <h2 className="text-t-primary text-lg md:text-xl font-bold">{getPageTitle()}</h2>
-              <p className="hidden md:block text-[10px] text-t-placeholder uppercase font-black tracking-widest mt-0.5">
-                {getPageSubtitle()}
-              </p>
+            <div className="hidden sm:block flex-1 max-w-lg">
+               <FundSearch 
+                  key={location.pathname}
+                  placeholder="Search any mutual fund to view details..."
+                  onSelect={(fund) => {
+                     if (fund && fund.scheme_code) {
+                         navigate(`/fund/${fund.scheme_code}`);
+                     }
+                  }}
+               />
             </div>
           </div>
 
@@ -411,87 +307,6 @@ const AppShell = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Notification Dropdown */}
-              <div className="relative" ref={notifRef}>
-                <button
-                  onClick={() => setNotifOpen(!isNotifOpen)}
-                  className="p-2.5 text-t-secondary hover:bg-slate-50 hover:text-primary rounded-xl transition-all border-none bg-transparent cursor-pointer relative"
-                >
-                  <MdOutlineNotifications size={22} />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-2 right-2.5 size-2 bg-primary rounded-full border-2 border-surface" />
-                  )}
-                </button>
-
-                {isNotifOpen && (
-                  <div className="absolute right-0 mt-3 w-80 bg-surface rounded-2xl shadow-2xl border border-border z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
-                    <div className="p-4 border-b border-border flex justify-between items-center">
-                      <span className="font-bold text-sm">Notifications</span>
-                      <div className="flex items-center gap-2">
-                        {unreadCount > 0 && (
-                          <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
-                            {unreadCount} New
-                          </span>
-                        )}
-                        {notifications.length > 0 && (
-                          <button
-                            onClick={markAllNotificationsAsRead}
-                            className="text-[10px] px-2 py-1 rounded-md font-bold text-primary hover:bg-primary/10 transition-colors border-none bg-transparent cursor-pointer"
-                          >
-                            MARK ALL AS READ
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="p-6 text-center text-xs text-t-secondary">
-                          You are all caught up.
-                        </div>
-                      ) : (
-                        notifications.map((notification, index) => (
-                          <div
-                            key={notification.id}
-                            className={`p-4 hover:bg-slate-50 transition-colors ${index !== notifications.length - 1 ? 'border-b border-slate-50' : ''}`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="text-xs font-bold text-t-primary">
-                                  {notification.title}
-                                </p>
-                                <p className="text-[11px] text-t-secondary mt-1">
-                                  {notification.message}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                {!notification.isRead && (
-                                  <button
-                                    onClick={() => markNotificationAsRead(notification.id)}
-                                    aria-label="Mark as read"
-                                    title="Mark as read"
-                                    className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors border-none bg-transparent cursor-pointer"
-                                  >
-                                    <MdDone size={16} />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => dismissNotification(notification.id)}
-                                  aria-label="Dismiss notification"
-                                  title="Dismiss notification"
-                                  className="p-1.5 rounded-md text-t-secondary hover:bg-slate-100 transition-colors border-none bg-transparent cursor-pointer"
-                                >
-                                  <MdClose size={16} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* Profile Dropdown */}
               <div className="relative" ref={profileRef}>
                 <button

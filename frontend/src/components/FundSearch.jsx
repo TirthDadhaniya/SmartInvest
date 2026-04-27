@@ -60,6 +60,15 @@ const FundSearch = ({ value, onSelect, error, placeholder = 'Search for a mutual
     try {
       const res = await fetch(`https://api.mfapi.in/mf/${fund.schemeCode}`);
       const detail = await res.json();
+
+      let first_nav_date = null;
+      if (detail.data && detail.data.length > 0) {
+        // Oldest data is at the end of the array
+        const lastEntry = detail.data[detail.data.length - 1];
+        const [d, m, y] = lastEntry.date.split('-');
+        first_nav_date = `${y}-${m}-${d}`;
+      }
+
       onSelect({
         scheme_code: fund.schemeCode,
         scheme_name: detail.meta.scheme_name,
@@ -68,6 +77,7 @@ const FundSearch = ({ value, onSelect, error, placeholder = 'Search for a mutual
         scheme_type: detail.meta.scheme_type,
         currentNAV: parseFloat(detail.data[0].nav),
         history: detail.data,
+        first_nav_date,
       });
     } catch {
       alert('Failed to fetch fund details securely.');

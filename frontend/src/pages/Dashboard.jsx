@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo, useCallback } from 'react';
 import {
   MdOutlineInfo,
   MdOutlineTrendingUp,
@@ -18,7 +18,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import api from '../api/axios';
 import { PortfolioContext } from '../context/portfolio-context';
-import { formatINR, formatPercent } from '../utils/formatters';
+import { formatINR } from '../utils/formatters';
 
 // Skeleton is imported from the shared PageSkeletons component
 import { DashboardSkeleton } from '../components/PageSkeletons';
@@ -82,7 +82,6 @@ const Dashboard = () => {
     fetchPortfolio,
   } = useContext(PortfolioContext);
 
-  // TASK 4: Fix Asset Allocation logic and move hook above early returns to follow Rules of Hooks
   const categoryColors = useMemo(
     () => [
       'bg-indigo-500',
@@ -163,7 +162,7 @@ const Dashboard = () => {
     [goalGaps]
   );
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -213,12 +212,11 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchPortfolio]);
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line
-  }, []);
+  }, [fetchData]);
 
   const isGlobalLoading = loading || portLoading;
 
@@ -278,38 +276,13 @@ const Dashboard = () => {
     );
   }
 
-  const {
-    totalInvested,
-    totalCurrentValue,
-    unrealizedProfit,
-    realizedProfit,
-    totalProfit,
-    totalReturnPercent,
-    assetAllocation,
-    healthScore,
-    investments,
-    expenseInfo,
-  } = portfolio;
+  const { unrealizedProfit, realizedProfit, totalProfit, healthScore, expenseInfo } = portfolio;
   const isUnrealizedProfit = unrealizedProfit >= 0;
   const isRealizedProfit = realizedProfit >= 0;
   const isTotalProfit = totalProfit >= 0;
 
   const topCategory = normalizedCategoryAllocation[0] || null;
   const categoryPieData = normalizedCategoryAllocation;
-
-  const generateTips = () => {
-    const t = [];
-    if (assetAllocation.equity > 80) t.push('Consider adding debt funds for stability');
-    const u = new Set(investments.map(inv => inv.schemeCode));
-    if (u.size === 1) t.push('Your portfolio has only one fund — diversify across categories');
-    if (assetAllocation.debt === 0)
-      t.push('No debt allocation detected — debt funds reduce overall risk');
-    if (assetAllocation.hybrid === 0 && assetAllocation.equity > 60)
-      t.push('Adding hybrid funds can balance your risk-return profile');
-    if (t.length === 0) return ['Your portfolio looks well diversified'];
-    return t;
-  };
-  const tips = generateTips();
 
   // Upcoming SIPs logic - find active SIPs with nextDueDate within 15 days
   const now = new Date();
@@ -331,24 +304,6 @@ const Dashboard = () => {
     setSipModalOpen(true);
     setTimeout(() => sipInputRef.current?.focus(), 50);
   };
-  const dashboardNotifications = [
-    {
-      id: 'health-score',
-      text:
-        healthScore >= 75
-          ? `Health score is strong at ${healthScore}/100.`
-          : `Health score is ${healthScore}/100. Improve diversification for better resilience.`,
-    },
-    ...tips.slice(0, 2).map((tip, idx) => ({ id: `tip-${idx}`, text: tip })),
-    ...(topCategory
-      ? [
-          {
-            id: 'top-category',
-            text: `${topCategory.label} is your largest allocation at ${topCategory.percent.toFixed(2)}%.`,
-          },
-        ]
-      : []),
-  ];
 
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-350 mx-auto w-full animate-in fade-in duration-300">
@@ -757,10 +712,10 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Bottom Grid: Transactions + Right Column (What-If, Goals, Tips) */}
+      {/* Bottom Grid: Transactions */}
       <div className="grid grid-cols-12 gap-6">
         {/* RECENT TRANSACTIONS */}
-        <div className="col-span-12 lg:col-span-8 bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="col-span-12 bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
           {/* Heading and View All link */}
           <div className="p-6 border-b border-border flex justify-between items-center">
             <p className="text-[10px] uppercase tracking-widest text-t-secondary font-bold">
@@ -781,100 +736,121 @@ const Dashboard = () => {
               </span>
             </div>
           ) : (
-            <table className="w-full text-left">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Asset
-                  </th>
-                  <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">
-                    Amount
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {transactions.slice(0, 5).map(tx => (
-                  <tr key={tx._id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                      {new Date(tx.date).toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Link
-                        to={`/fund/${tx.scheme_code}`}
-                        className="text-sm font-bold text-primary hover:underline no-underline truncate w-full inline-block"
-                        title={tx.scheme_name}
-                      >
-                        {tx.scheme_name}
-                      </Link>
-                      <p className="text-[10px] text-slate-400">
-                        {tx.scheme_code} • {tx.type === 'buy' ? 'Purchase' : 'Redemption'}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`text-[12px] font-bold px-3 py-2 rounded uppercase ${tx.type === 'buy' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}
-                      >
-                        {tx.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right font-bold text-t-primary">
-                      {formatINR(tx.amount)}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-250">
+                <thead className="bg-slate-50 border-b border-border">
+                  <tr>
+                    <th className="px-6 py-4 text-xs font-bold text-t-secondary uppercase">Date</th>
+                    <th className="px-6 py-4 text-xs font-bold text-t-secondary uppercase">
+                      Asset
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-t-secondary uppercase text-center">
+                      Type
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-t-secondary uppercase text-right">
+                      Amount
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-t-secondary uppercase text-right">
+                      Units / Nav
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-t-secondary uppercase text-right">
+                      Profit / Loss
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {transactions.slice(0, 5).map(tx => {
+                    const isSell = tx.type === 'sell';
+                    const pnl = isSell ? Number(tx.profitLoss || 0) : null;
+                    const isPositive = pnl >= 0;
+                    const units = Number(tx.units || 0);
+                    const nav = Number(tx.nav || 0);
+                    const baseAmount = units * nav;
+                    const pnlPct =
+                      isSell && baseAmount > 0 ? ((pnl / baseAmount) * 100).toFixed(2) : 0;
+
+                    let bgFlag = '';
+                    let badgeColors = 'bg-slate-100 text-slate-800';
+                    if (tx.type === 'buy') {
+                      badgeColors = 'bg-green-100 text-green-800';
+                      bgFlag = 'hover:bg-green-50/50';
+                    }
+                    if (tx.type === 'sell') {
+                      badgeColors = 'bg-red-100 text-red-800';
+                      bgFlag = 'hover:bg-red-50/50';
+                    }
+                    if (tx.type === 'sip') {
+                      badgeColors = 'bg-blue-100 text-blue-800';
+                      bgFlag = 'hover:bg-blue-50/50';
+                    }
+                    if (tx.type === 'redemption') {
+                      badgeColors = 'bg-purple-100 text-purple-800';
+                      bgFlag = 'hover:bg-purple-50/50';
+                    }
+
+                    return (
+                      <tr
+                        key={tx._id}
+                        className={`transition-colors border-l-4 border-l-transparent ${bgFlag}`}
+                      >
+                        <td className="px-6 py-4 text-sm font-medium text-t-primary whitespace-nowrap">
+                          {new Date(tx.date).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
+                        <td className="px-6 py-4 max-w-62.5">
+                          <button
+                            onClick={() => navigate(`/fund/${tx.scheme_code}`)}
+                            className="text-sm font-bold text-primary hover:text-primary-hover underline text-left truncate w-full tracking-tight bg-transparent border-none cursor-pointer"
+                            title={tx.scheme_name}
+                          >
+                            {tx.scheme_name}
+                          </button>
+                          <p className="text-[10px] text-t-secondary mt-0.5">{tx.scheme_code}</p>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span
+                            className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-md tracking-wider ${badgeColors}`}
+                          >
+                            {tx.type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-sm font-bold text-t-primary">
+                            {formatINR(tx.amount)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <p className="text-sm font-bold text-t-primary">{units.toFixed(2)}</p>
+                          <p className="text-[10px] text-t-secondary">{`Rs ${nav.toFixed(4)}`}</p>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {isSell ? (
+                            <div
+                              className={`flex flex-col items-end ${isPositive ? 'text-positive' : 'text-negative'}`}
+                            >
+                              <span className="text-sm font-bold">
+                                {isPositive ? '+' : ''}
+                                {formatINR(pnl)}
+                              </span>
+                              <span className="text-[10px] font-bold">
+                                {isPositive ? '+' : ''}
+                                {pnlPct}%
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-t-placeholder font-bold text-sm">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
-
-        {/* RIGHT COLUMN: Quick What-If + Tips */}
-        <div className="col-span-12 lg:col-span-4 space-y-6">
-          {/* QUICK WHAT-IF WIDGET */}
-          <div className="bg-slate-50 p-6 rounded-xl border border-border relative overflow-hidden group">
-            <div className="relative z-10">
-              <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-3">
-                QUICK WHAT-IF
-              </p>
-              <p className="text-[13px] leading-relaxed text-slate-700 mb-4">
-                Try the What-If Simulator to test any fund, amount, and past date before you invest.
-              </p>
-              <button
-                onClick={() => navigate('/investments#what-if-simulator')}
-                className="w-full bg-primary text-white py-2 rounded-lg text-sm font-bold hover:bg-primary-hover transition-colors flex items-center justify-center gap-2 border-none cursor-pointer"
-              >
-                Try Simulator <MdOutlineTrendingUp className="text-lg" />
-              </button>
-            </div>
-            <MdOutlineTrendingUp className="absolute -bottom-4 -right-4 text-slate-200 text-8xl opacity-30 select-none group-hover:scale-110 transition-transform" />
-          </div>
-
-          {/* NOTIFICATIONS */}
-          <div className="bg-amber-50/50 p-6 rounded-xl border border-amber-100">
-            <div className="flex items-center gap-2 mb-3">
-              <MdOutlineWarning className="text-amber-600 text-xl" />
-              <p className="text-[10px] uppercase tracking-widest text-amber-800 font-bold">
-                NOTIFICATIONS
-              </p>
-            </div>
-            <ul className="space-y-3">
-              {dashboardNotifications.map(note => (
-                <li key={note.id} className="text-[12px] text-slate-700 flex gap-2">
-                  <span className="text-amber-500 font-bold">•</span>
-                  {note.text}
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
       </div>
       {/* SIP Adjust Amount Modal */}
@@ -946,7 +922,7 @@ const Dashboard = () => {
                   <input
                     ref={sipInputRef}
                     type="number"
-                    min="1"
+                    step="any"
                     value={newAmount}
                     onChange={e => {
                       setNewAmount(e.target.value);

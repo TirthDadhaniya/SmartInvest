@@ -123,48 +123,102 @@ export const DashboardSkeleton = () => (
 );
 
 /* ── Investments (My Portfolio) Skeleton ───────────────────────────────────── */
-/** Matches: header + filter bar + list of fund cards */
+/** Matches: header + filters + div-table + allocation/what-if row */
 export const InvestmentsSkeleton = () => (
   <div className="flex-1 p-4 md:p-8 space-y-6 max-w-350 mx-auto w-full animate-pulse">
-    {/* Page header */}
-    <div className="flex justify-between items-end">
+    {/* Header */}
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
       <div className="space-y-2">
         <Bar className="h-8 w-48" />
-        <Bar className="h-3 w-64" />
+        <Bar className="h-3 w-72" />
       </div>
-      <div className="flex gap-3">
+      <div className="flex items-center gap-3">
         <Bar className="h-10 w-24 rounded-lg" />
         <Bar className="h-10 w-32 rounded-lg" />
       </div>
     </div>
 
-    {/* Filter bar */}
-    <CardSkeleton className="p-4 flex gap-4 items-center">
-      <Bar className="h-10 flex-1 max-w-[320px] rounded-lg" />
-      <Bar className="h-10 w-28 rounded-lg" />
-      <Bar className="h-10 w-40 rounded-lg" />
+    {/* Filters */}
+    <CardSkeleton className="p-4 flex flex-col md:flex-row gap-4 justify-between items-center">
+      <Bar className="h-10 w-full md:w-80 rounded-lg" />
+      <div className="flex gap-4 w-full md:w-auto">
+        <Bar className="h-10 w-28 rounded-lg" />
+        <Bar className="h-10 w-40 rounded-lg" />
+      </div>
     </CardSkeleton>
 
-    {/* Tracking count */}
-    <Bar className="h-3 w-32" />
+    {/* Div-table shell */}
+    <CardSkeleton className="overflow-hidden">
+      <div className="overflow-x-auto">
+        <div className="min-w-275">
+          <div className="flex bg-slate-100 border-b border-border">
+            <Bar className="h-12 w-[46%] rounded-none" />
+            <Bar className="h-12 w-[12%] rounded-none" />
+            <Bar className="h-12 w-[10%] rounded-none" />
+            <Bar className="h-12 w-[8%] rounded-none" />
+            <Bar className="h-12 w-[9%] rounded-none" />
+            <Bar className="h-12 w-[10%] rounded-none" />
+            <Bar className="h-12 w-[5%] rounded-none" />
+          </div>
 
-    {/* Fund cards */}
-    {[1, 2, 3, 4].map(i => (
-      <CardSkeleton key={i} className="p-5 flex items-center gap-6">
-        <div className={newFunction()}>
-          <Bar className="h-4 w-48" />
-          <Bar className="h-3 w-24" />
-        </div>
-        <div className="grid grid-cols-5 gap-6 flex-1">
-          {[1, 2, 3, 4, 5].map(j => (
-            <div key={j} className="space-y-2">
-              <Bar className="h-2 w-14" />
-              <Bar className="h-4 w-20" />
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="flex border-b border-border/60 last:border-b-0">
+              <div className="py-4 px-6 w-[46%] space-y-2">
+                <Bar className="h-4 w-64" />
+                <Bar className="h-3 w-28" />
+              </div>
+              <div className="py-4 px-4 w-[12%] space-y-2 border-l border-border">
+                <Bar className="h-3 w-16 ml-auto" />
+                <Bar className="h-4 w-20 ml-auto" />
+              </div>
+              <div className="py-4 px-4 w-[10%] space-y-2 border-l border-border">
+                <Bar className="h-4 w-16 ml-auto" />
+                <Bar className="h-3 w-18 ml-auto" />
+              </div>
+              <div className="py-4 px-4 w-[8%] space-y-2 border-l border-border">
+                <Bar className="h-3 w-12 ml-auto" />
+                <Bar className="h-4 w-14 ml-auto" />
+              </div>
+              <div className="py-4 px-4 w-[9%] space-y-2 border-l border-border">
+                <Bar className="h-3 w-14 ml-auto" />
+                <Bar className="h-4 w-16 ml-auto" />
+              </div>
+              <div className="py-4 px-4 w-[10%] flex items-center justify-center border-l border-border">
+                <Bar className="h-10 w-24" />
+              </div>
+              <div className="py-4 px-4 w-[5%] flex items-center justify-end border-l border-border">
+                <Bar className="h-8 w-8 rounded-full" />
+              </div>
             </div>
           ))}
         </div>
+      </div>
+    </CardSkeleton>
+
+    {/* Bottom row cards */}
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <CardSkeleton className="p-6 lg:col-span-4 space-y-4">
+        <Bar className="h-4 w-36" />
+        <div className="flex items-center gap-6">
+          <div className="h-28 w-28 rounded-full bg-slate-200" />
+          <div className="flex-1 space-y-3">
+            <Bar className="h-3 w-full" />
+            <Bar className="h-3 w-5/6" />
+            <Bar className="h-3 w-2/3" />
+          </div>
+        </div>
       </CardSkeleton>
-    ))}
+      <CardSkeleton className="p-6 lg:col-span-8 space-y-4">
+        <Bar className="h-3 w-48" />
+        <Bar className="h-4 w-3/4" />
+        <div className="grid grid-cols-3 gap-4">
+          <Bar className="h-10 rounded-lg" />
+          <Bar className="h-10 rounded-lg" />
+          <Bar className="h-10 rounded-lg" />
+        </div>
+        <Bar className="h-10 w-40 rounded-lg" />
+      </CardSkeleton>
+    </div>
   </div>
 );
 
@@ -415,6 +469,3 @@ export const FundDetailSkeleton = () => (
     </div>
   </div>
 );
-function newFunction() {
-  return 'flex-1 space-y-2 min-w-[180px]';
-}

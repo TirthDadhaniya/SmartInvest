@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import api from "../api/axios";
 import { AuthContext } from "./auth-context";
 
@@ -6,13 +6,11 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check authentication strictly via '/me' ping on mount (relies on cookies)
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const res = await api.get("/api/auth/me");
         if (res.data.success) {
-          // Note: Backend returns { success: true, data: { _id, name, email, riskPreference } }
           setUser(res.data.data);
         } else {
           setUser(null);
@@ -22,10 +20,11 @@ export const AuthProvider = ({ children }) => {
       }
       setLoading(false);
     };
+
     fetchUser();
   }, []);
 
-  const login = (userData) => {
+  const login = userData => {
     setUser(userData);
   };
 
@@ -33,7 +32,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await api.post("/api/auth/logout");
     } catch {
-      // Ignore errors on logout execution
+      // Ignore logout request failures and clear local session state.
     }
     setUser(null);
   };
