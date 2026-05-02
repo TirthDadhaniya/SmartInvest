@@ -1,0 +1,41 @@
+services:
+  smartinvest-db:
+    image: mongo:latest
+    container_name: smartinvest-db
+    restart: always
+    volumes:
+      - ./data/db:/data/db
+    networks:
+      - npm-network
+
+  smartinvest-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smartinvest-backend
+    restart: always
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://smartinvest-db:27017/smartinvest
+      - JWT_SECRET=cl12CWTHptbF0TzY1Z8tk6V31xMdlemM8nlsV3rJnbL
+      - NODE_ENV=production
+      - CLIENT_URL=https://smartinvest.tirthdadhaniya.me
+    depends_on:
+      - smartinvest-db
+    networks:
+      - npm-network
+
+  smartinvest-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smartinvest-frontend
+    restart: always
+    depends_on:
+      - smartinvest-backend
+    networks:
+      - npm-network
+
+networks:
+  npm-network:
+    external: true
