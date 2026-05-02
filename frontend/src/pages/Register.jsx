@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import usePageTitle from '../utils/usePageTitle';
 import {
   MdOutlineAccountBalanceWallet,
   MdOutlinePerson,
@@ -21,6 +22,7 @@ const Register = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  usePageTitle('Register');
 
   const handleChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -96,10 +98,10 @@ const Register = () => {
       {/* Top Navigation */}
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-border px-6 md:px-10 py-4 bg-surface">
         <div className="flex items-center gap-4 text-primary">
-          <div className="size-8 flex items-center justify-center bg-primary/10 rounded-lg">
-            <MdOutlineAccountBalanceWallet className="text-primary" />
+          <div className="size-10 flex items-center justify-center bg-primary/10 rounded-lg">
+            <MdOutlineAccountBalanceWallet className="text-primary" size={28} />
           </div>
-          <h2 className="text-t-primary text-xl font-bold leading-tight tracking-tight">
+          <h2 className="text-t-primary text-2xl font-bold leading-tight tracking-tight">
             SmartInvest
           </h2>
         </div>

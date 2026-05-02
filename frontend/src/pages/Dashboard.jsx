@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef, useMemo, useCallback } from 'react';
+import usePageTitle from '../utils/usePageTitle';
 import {
   MdOutlineInfo,
   MdOutlineTrendingUp,
@@ -42,6 +43,10 @@ const Dashboard = () => {
   const [sipSaveSuccess, setSipSaveSuccess] = useState(false);
   const sipInputRef = useRef(null);
 
+  // SIP Payment
+  const [sipPaymentLoading, setSipPaymentLoading] = useState(false);
+  const [sipPaymentMessage, setSipPaymentMessage] = useState('');
+
   const closeSipModal = () => {
     setSipModalOpen(false);
     setEditingSip(null);
@@ -72,6 +77,25 @@ const Dashboard = () => {
       setSipSaveError(err?.response?.data?.message || 'Failed to update SIP. Please try again.');
     } finally {
       setSipSaving(false);
+    }
+  };
+
+  const handlePaySip = async sipId => {
+    setSipPaymentLoading(true);
+    setSipPaymentMessage('');
+    try {
+      await api.post(`/api/sips/${sipId}/execute`, {});
+      setSipPaymentMessage('SIP instalment executed successfully!');
+      // Refresh data
+      await fetchData();
+      setTimeout(() => setSipPaymentMessage(''), 3000);
+    } catch (err) {
+      setSipPaymentMessage(
+        err?.response?.data?.message || 'Failed to execute SIP. Please try again.'
+      );
+      setTimeout(() => setSipPaymentMessage(''), 4000);
+    } finally {
+      setSipPaymentLoading(false);
     }
   };
 
@@ -218,6 +242,8 @@ const Dashboard = () => {
     fetchData();
   }, [fetchData]);
 
+  usePageTitle('Dashboard');
+
   const isGlobalLoading = loading || portLoading;
 
   if (isGlobalLoading) return <DashboardSkeleton />;
@@ -337,12 +363,29 @@ const Dashboard = () => {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => openSipModal(nextSip)}
-            className="text-xs font-bold uppercase tracking-widest bg-primary text-t-inverse px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors whitespace-nowrap border-none cursor-pointer"
-          >
-            Adjust Amount
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handlePaySip(nextSip._id)}
+              disabled={sipPaymentLoading}
+              className="text-xs font-bold uppercase tracking-widest bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors whitespace-nowrap border-none cursor-pointer disabled:opacity-50"
+            >
+              {sipPaymentLoading ? 'Processing...' : 'Pay SIP'}
+            </button>
+            <button
+              onClick={() => openSipModal(nextSip)}
+              className="text-xs font-bold uppercase tracking-widest bg-primary text-t-inverse px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors whitespace-nowrap border-none cursor-pointer"
+            >
+              Adjust Amount
+            </button>
+          </div>
+        </div>
+      )}
+
+      {sipPaymentMessage && (
+        <div
+          className={`p-3 rounded-lg text-sm font-bold animate-in fade-in duration-200 ${sipPaymentMessage.includes('successfully') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}
+        >
+          {sipPaymentMessage}
         </div>
       )}
 

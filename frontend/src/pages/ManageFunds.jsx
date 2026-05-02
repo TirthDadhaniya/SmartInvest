@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
+import usePageTitle from '../utils/usePageTitle';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   MdOutlineSearch,
@@ -12,6 +13,7 @@ import {
   MdDelete,
   MdOutlineRocketLaunch,
   MdRefresh,
+  MdOutlinePayments,
 } from 'react-icons/md';
 import api from '../api/axios';
 import { PortfolioContext } from '../context/portfolio-context';
@@ -539,6 +541,10 @@ const ManageFunds = () => {
   const [sellModalItem, setSellModalItem] = useState(null);
   const [toast, setToast] = useState('');
 
+  // SIP Payment
+  const [sipPaymentLoading, setSipPaymentLoading] = useState(null); // ID of SIP being paid
+  const [sipPaymentMessage, setSipPaymentMessage] = useState('');
+
   // Add Investment form state
   const [invSelectedFund, setInvSelectedFund] = useState(null);
   const [invDate, setInvDate] = useState(new Date().toISOString().split('T')[0]);
@@ -875,6 +881,24 @@ const ManageFunds = () => {
     }
   };
 
+  const handlePaySip = async id => {
+    setSipPaymentLoading(id);
+    setSipPaymentMessage('');
+    try {
+      await api.post(`/api/sips/${id}/execute`, {});
+      setSipPaymentMessage('SIP instalment executed successfully!');
+      loadData();
+      setTimeout(() => setSipPaymentMessage(''), 3000);
+    } catch (err) {
+      setSipPaymentMessage(
+        err?.response?.data?.message || 'Failed to execute SIP. Please try again.'
+      );
+      setTimeout(() => setSipPaymentMessage(''), 4000);
+    } finally {
+      setSipPaymentLoading(null);
+    }
+  };
+
   const handleSipDelete = async id => {
     if (window.confirm('Delete this SIP permanently?')) {
       try {
@@ -894,9 +918,18 @@ const ManageFunds = () => {
 
   const newLocal =
     'block max-w-100 text-left text-sm font-bold text-primary hover:underline truncate bg-transparent border-none cursor-pointer p-0';
+  usePageTitle('Manage Funds');
   return (
     <div className="flex-1 p-4 md:p-8 space-y-8 max-w-350 mx-auto w-full relative pb-20 animate-in fade-in duration-300">
       <Toast message={toast} />
+
+      {sipPaymentMessage && (
+        <div
+          className={`p-3 rounded-lg text-sm font-bold animate-in fade-in duration-200 ${sipPaymentMessage.includes('successfully') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}
+        >
+          {sipPaymentMessage}
+        </div>
+      )}
 
       <div>
         <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-t-primary">
@@ -1401,15 +1434,15 @@ const ManageFunds = () => {
                           key={s._id || `${s.scheme_code || s.fundName}-${idx}`}
                           className="hover:bg-slate-50 transition-colors"
                         >
-                          <td className="px-6 py-4 max-w-55">
+                          <td className="px-6 py-4 max-w-55 overflow-hidden">
                             <button
                               onClick={() => navigate(`/fund/${s.scheme_code}`)}
-                              className="text-sm font-bold text-primary hover:underline truncate bg-transparent border-none cursor-pointer p-0"
+                              className="block w-full max-w-full text-sm font-bold text-primary hover:underline truncate text-left bg-transparent border-none cursor-pointer p-0"
                               title={s.scheme_name || s.fundName}
                             >
                               {s.scheme_name || s.fundName}
                             </button>
-                            <p className="text-[10px] text-t-secondary uppercase tracking-wider font-bold mt-0.5">
+                            <p className="text-[10px] text-t-secondary uppercase tracking-wider font-bold mt-0.5 overflow-hidden truncate">
                               {s.scheme_category || s.schemeCategory}
                             </p>
                           </td>
@@ -1440,6 +1473,18 @@ const ManageFunds = () => {
                             })}
                           </td>
                           <td className="px-6 py-4 flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handlePaySip(s._id)}
+                              disabled={sipPaymentLoading === s._id}
+                              className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-md border-none cursor-pointer transition-colors disabled:opacity-50"
+                              title="Pay SIP"
+                            >
+                              {sipPaymentLoading === s._id ? (
+                                <div className="animate-spin text-lg">⟳</div>
+                              ) : (
+                                <MdOutlinePayments className="text-lg" />
+                              )}
+                            </button>
                             {s.status === 'active' ? (
                               <button
                                 onClick={() => handleSipToggle(s._id, 'paused')}

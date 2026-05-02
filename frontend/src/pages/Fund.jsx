@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import usePageTitle from '../utils/usePageTitle';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MdOutlineTrendingUp, MdOutlineArrowBack } from 'react-icons/md';
 import {
@@ -144,6 +145,8 @@ const Fund = () => {
   const meta = useMemo(() => mfData?.meta || {}, [mfData]);
   const currentNAV = history[0] ? parseFloat(history[0].nav) : 0;
   const latestDate = history[0]?.date || '';
+
+  usePageTitle(meta?.scheme_name || 'Fund');
 
   const chartData = useMemo(() => {
     if (!history.length) return [];

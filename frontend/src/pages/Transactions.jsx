@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import usePageTitle from '../utils/usePageTitle';
 import { useNavigate } from 'react-router-dom';
 import {
   MdOutlineSearch,
@@ -94,6 +95,8 @@ const Transactions = () => {
   useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions]);
+
+  usePageTitle('Transactions');
 
   useEffect(() => {
     setCurrentPage(1);

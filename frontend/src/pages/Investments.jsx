@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
+import usePageTitle from '../utils/usePageTitle';
 import { useNavigate } from 'react-router-dom';
 import {
   MdOutlineSearch,
@@ -74,6 +75,8 @@ const MyInvestments = () => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 3000);
   };
+
+  usePageTitle('Investments');
 
   const loadData = async () => {
     try {

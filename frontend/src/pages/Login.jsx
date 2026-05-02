@@ -1,4 +1,5 @@
 import React, { useState, useContext } from 'react';
+import usePageTitle from '../utils/usePageTitle';
 import {
   MdOutlineAccountBalanceWallet,
   MdOutlineMail,
@@ -20,6 +21,8 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useContext(AuthContext);
+
+  usePageTitle('Login');
 
   const successMessage = location.state?.message;
 

@@ -1,31 +1,26 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { protect } = require("../middleware/authMiddleware");
-const { validate } = require("../middleware/validate");
-const { routeSchemas } = require("../validation/validator");
+const { protect } = require('../middleware/authMiddleware');
+const { validate } = require('../middleware/validate');
+const { routeSchemas } = require('../validation/validator');
 
-const sipController = require("../controller/sip.controller");
+const sipController = require('../controller/sip.controller');
 
-router.get("/", protect, sipController.getAllSIPs);
-router.post("/", protect, validate(routeSchemas.sip.create), sipController.createSIP);
+router.get('/', protect, sipController.getAllSIPs);
+router.post('/', protect, validate(routeSchemas.sip.create), sipController.createSIP);
 router.put(
-  "/:id/status",
+  '/:id/status',
   protect,
   validate(routeSchemas.sip.updateStatus),
-  sipController.updateSIPStatus,
+  sipController.updateSIPStatus
 );
-router.put("/:id", protect, validate(routeSchemas.sip.update), sipController.updateSIP);
+router.put('/:id', protect, validate(routeSchemas.sip.update), sipController.updateSIP);
 router.post(
-  "/:id/execute",
+  '/:id/execute',
   protect,
   validate(routeSchemas.sip.executeInstalment),
-  sipController.executeSIPInstalment,
+  sipController.executeSIPInstalment
 );
-router.delete(
-  "/:id",
-  protect,
-  validate(routeSchemas.sip.delete),
-  sipController.deleteSIP,
-);
+router.delete('/:id', protect, validate(routeSchemas.sip.delete), sipController.deleteSIP);
 
 module.exports = router;

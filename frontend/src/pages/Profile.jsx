@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
+import usePageTitle from '../utils/usePageTitle';
 import Toast from '../components/Toast';
 import { AuthContext } from '../context/auth-context';
 import { compareISODate, isBlank, isValidISODate, toNumber, todayISO } from '../utils/validation';
@@ -113,6 +114,8 @@ const Profile = () => {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  usePageTitle('Profile');
 
   const openGoalModal = (mode, data = null) => {
     setGoalModal({ isOpen: true, mode, data });
@@ -410,7 +413,7 @@ const Profile = () => {
             <div className="space-y-4">{goalList}</div>
           </div>
 
-          {reportCard && (
+          {/* {reportCard && (
             <div className="bg-surface rounded-xl shadow-sm border border-border p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-t-primary flex items-center gap-2">
@@ -442,7 +445,7 @@ const Profile = () => {
                 ))}
               </div>
             </div>
-          )}
+          )} */}
         </div>
       </div>
 
@@ -523,7 +526,9 @@ const Profile = () => {
                     className={`w-full bg-slate-50 border rounded-lg px-4 py-2.5 outline-none custom-date ${goalErrors.targetDate ? 'border-negative focus:border-negative focus:ring-1 focus:ring-negative' : 'border-border focus:border-primary focus:ring-1 focus:ring-primary'}`}
                   />
                   {goalErrors.targetDate && (
-                    <p className="text-[10px] text-negative font-bold mt-1">{goalErrors.targetDate}</p>
+                    <p className="text-[10px] text-negative font-bold mt-1">
+                      {goalErrors.targetDate}
+                    </p>
                   )}
                 </div>
               </div>
