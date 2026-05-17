@@ -1,6 +1,7 @@
 const SIP = require("../models/SIP");
 const { executeSIPInstalment } = require("../services/sip.service");
 const { normalizeToDateOnly } = require("../services/calculation.service");
+const axios = require("axios");
 
 /**
  * Retrieves all SIPs for the logged-in user.
@@ -123,9 +124,27 @@ exports.deleteSIP = async (req, res) => {
  */
 exports.executeSIPInstalment = async (req, res) => {
   try {
-    const { currentNAV } = req.body;
+    let { currentNAV } = req.body;
+
     if (!currentNAV) {
-      return res.status(400).json({ success: false, message: "Current NAV is required" });
+      const sip = await SIP.findOne({ _id: req.params.id, userID: req.user._id });
+      if (sip) {
+        try {
+          const response = await axios.get(`https://api.mfapi.in/mf/${sip.scheme_code}`);
+          if (response.data?.data?.[0]?.nav) {
+            currentNAV = parseFloat(response.data.data[0].nav);
+          }
+        } catch (fetchError) {
+          console.error("[ExecuteSIP NAV Fetch Error]", fetchError.message);
+        }
+      }
+    }
+
+    if (!currentNAV) {
+      return res.status(400).json({
+        success: false,
+        message: "Current NAV is required and could not be fetched automatically.",
+      });
     }
 
     const result = await executeSIPInstalment({

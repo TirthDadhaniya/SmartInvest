@@ -14,6 +14,7 @@ import {
   MdOutlineRocketLaunch,
   MdRefresh,
   MdOutlinePayments,
+  MdOutlineWarning,
 } from 'react-icons/md';
 import api from '../api/axios';
 import { PortfolioContext } from '../context/portfolio-context';
@@ -520,6 +521,46 @@ const BuyModal = ({ item, onClose, onSuccess }) => {
   );
 };
 
+// --- Delete SIP Modal ---
+const DeleteSipModal = ({ onClose, onConfirm }) => {
+  return (
+    <ModalWrapper onClose={onClose}>
+      <div className="p-6 border-b border-border flex justify-between items-center">
+        <h3 className="font-bold text-lg text-t-primary">Delete SIP</h3>
+        <button
+          onClick={onClose}
+          className="text-t-secondary hover:text-negative cursor-pointer border-none bg-transparent"
+        >
+          <MdOutlineClose className="text-xl" />
+        </button>
+      </div>
+      <div className="p-6">
+        <div className="flex items-center gap-4 text-amber-600 mb-4 bg-amber-50 p-4 rounded-lg border border-amber-100">
+          <MdOutlineWarning className="text-3xl shrink-0" />
+          <p className="text-sm font-bold">
+            Are you sure you want to delete this SIP? This action cannot be undone and will stop
+            future automated tracking for this fund.
+          </p>
+        </div>
+      </div>
+      <div className="p-6 border-t border-border bg-slate-50 flex justify-end gap-3">
+        <button
+          onClick={onClose}
+          className="px-5 py-2 text-sm font-bold text-t-secondary border-none bg-transparent cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          className="px-6 py-2 bg-negative text-t-inverse text-sm font-bold rounded-lg hover:bg-red-600 transition-all border-none cursor-pointer shadow-sm"
+        >
+          Confirm Delete
+        </button>
+      </div>
+    </ModalWrapper>
+  );
+};
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -539,11 +580,11 @@ const ManageFunds = () => {
 
   const [buyModalItem, setBuyModalItem] = useState(null);
   const [sellModalItem, setSellModalItem] = useState(null);
+  const [deleteSipId, setDeleteSipId] = useState(null);
   const [toast, setToast] = useState('');
 
   // SIP Payment
   const [sipPaymentLoading, setSipPaymentLoading] = useState(null); // ID of SIP being paid
-  const [sipPaymentMessage, setSipPaymentMessage] = useState('');
 
   // Add Investment form state
   const [invSelectedFund, setInvSelectedFund] = useState(null);
@@ -883,30 +924,34 @@ const ManageFunds = () => {
 
   const handlePaySip = async id => {
     setSipPaymentLoading(id);
-    setSipPaymentMessage('');
     try {
-      await api.post(`/api/sips/${id}/execute`, {});
-      setSipPaymentMessage('SIP instalment executed successfully!');
-      loadData();
-      setTimeout(() => setSipPaymentMessage(''), 3000);
+      const res = await api.post(`/api/sips/${id}/execute`, {});
+      if (res.data.success) {
+        showRefreshToast('SIP instalment executed successfully!');
+      }
     } catch (err) {
-      setSipPaymentMessage(
-        err?.response?.data?.message || 'Failed to execute SIP. Please try again.'
-      );
-      setTimeout(() => setSipPaymentMessage(''), 4000);
+      const errorMsg =
+        err?.response?.data?.message || 'Failed to execute SIP. Please try again.';
+      setToast(errorMsg);
+      setTimeout(() => setToast(''), 4000);
     } finally {
       setSipPaymentLoading(null);
     }
   };
 
-  const handleSipDelete = async id => {
-    if (window.confirm('Delete this SIP permanently?')) {
-      try {
-        await api.delete(`/api/sips/${id}`);
-        showRefreshToast('SIP deleted.');
-      } catch {
-        alert('Delete failed');
-      }
+  const handleSipDeleteRequest = id => {
+    setDeleteSipId(id);
+  };
+
+  const confirmSipDelete = async () => {
+    if (!deleteSipId) return;
+    try {
+      await api.delete(`/api/sips/${deleteSipId}`);
+      setDeleteSipId(null);
+      showRefreshToast('SIP deleted successfully.');
+    } catch (err) {
+      setToast(err.response?.data?.message || 'Failed to delete SIP.');
+      setTimeout(() => setToast(''), 4000);
     }
   };
 
@@ -922,14 +967,6 @@ const ManageFunds = () => {
   return (
     <div className="flex-1 p-4 md:p-8 space-y-8 max-w-350 mx-auto w-full relative pb-20 animate-in fade-in duration-300">
       <Toast message={toast} />
-
-      {sipPaymentMessage && (
-        <div
-          className={`p-3 rounded-lg text-sm font-bold animate-in fade-in duration-200 ${sipPaymentMessage.includes('successfully') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}
-        >
-          {sipPaymentMessage}
-        </div>
-      )}
 
       <div>
         <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-t-primary">
@@ -965,7 +1002,7 @@ const ManageFunds = () => {
       <div className="animate-in fade-in zoom-in-95 duration-200">
         {activeTab === 'Investments' ? (
           <div className="space-y-8">
-            {/* ADD INVESTMENT FORM (Refactored to match SIP UI) */}
+            {/* ADD INVESTMENT FORM */}
             <section className="bg-surface rounded-xl border border-border shadow-sm p-6 grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-8">
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-t-primary">Add New Investment</h3>
@@ -1078,7 +1115,7 @@ const ManageFunds = () => {
                 </form>
               </div>
 
-              {/* Purchase Summary Panel (Connected to real data) */}
+              {/* Purchase Summary Panel */}
               <div className="bg-slate-50 rounded-xl border border-slate-200 p-6 flex flex-col justify-center relative overflow-hidden h-full z-0">
                 <MdOutlineRocketLaunch className="absolute -right-6 -bottom-6 text-[120px] text-slate-200/50" />
                 <div className="relative z-10 space-y-5">
@@ -1127,7 +1164,7 @@ const ManageFunds = () => {
               </div>
             </section>
 
-            {/* HOLDINGS TABLE — Action Focused */}
+            {/* HOLDINGS TABLE */}
             <section className="bg-surface rounded-xl shadow-sm border border-border overflow-hidden">
               <div className="p-6 border-b border-border flex justify-between items-center">
                 <h3 className="text-lg font-bold text-t-primary">Your Holdings</h3>
@@ -1429,89 +1466,100 @@ const ManageFunds = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {sips.map((s, idx) => (
-                        <tr
-                          key={s._id || `${s.scheme_code || s.fundName}-${idx}`}
-                          className="hover:bg-slate-50 transition-colors"
-                        >
-                          <td className="px-6 py-4 max-w-55 overflow-hidden">
-                            <button
-                              onClick={() => navigate(`/fund/${s.scheme_code}`)}
-                              className="block w-full max-w-full text-sm font-bold text-primary hover:underline truncate text-left bg-transparent border-none cursor-pointer p-0"
-                              title={s.scheme_name || s.fundName}
-                            >
-                              {s.scheme_name || s.fundName}
-                            </button>
-                            <p className="text-[10px] text-t-secondary uppercase tracking-wider font-bold mt-0.5 overflow-hidden truncate">
-                              {s.scheme_category || s.schemeCategory}
-                            </p>
-                          </td>
-                          <td className="px-6 py-4 text-base font-black text-t-primary">
-                            {formatINR(s.monthlyAmount)}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-black tracking-widest uppercase rounded-md border ${
-                                s.status === 'active'
-                                  ? 'bg-green-50 text-green-700 border-green-200'
-                                  : s.status === 'paused'
-                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                    : 'bg-slate-100 text-slate-600 border-slate-300'
-                              }`}
-                            >
-                              {s.status === 'active' && <MdPlayArrow className="text-sm" />}
-                              {s.status === 'paused' && <MdPause className="text-sm" />}
-                              {s.status === 'completed' && <MdStop className="text-sm" />}
-                              {s.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm font-bold text-t-primary">
-                            {new Date(s.nextDueDate).toLocaleDateString('en-GB', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </td>
-                          <td className="px-6 py-4 flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handlePaySip(s._id)}
-                              disabled={sipPaymentLoading === s._id}
-                              className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-md border-none cursor-pointer transition-colors disabled:opacity-50"
-                              title="Pay SIP"
-                            >
-                              {sipPaymentLoading === s._id ? (
-                                <div className="animate-spin text-lg">⟳</div>
-                              ) : (
-                                <MdOutlinePayments className="text-lg" />
+                      {sips.map((s, idx) => {
+                        const now = new Date();
+                        const nextDue = new Date(s.nextDueDate);
+                        const diffDays = Math.ceil(
+                          (nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+                        );
+                        const canPay = s.status === 'active' && diffDays <= 15;
+
+                        return (
+                          <tr
+                            key={s._id || `${s.scheme_code || s.fundName}-${idx}`}
+                            className="hover:bg-slate-50 transition-colors"
+                          >
+                            <td className="px-6 py-4 max-w-55 overflow-hidden">
+                              <button
+                                onClick={() => navigate(`/fund/${s.scheme_code}`)}
+                                className="block w-full max-w-full text-sm font-bold text-primary hover:underline truncate text-left bg-transparent border-none cursor-pointer p-0"
+                                title={s.scheme_name || s.fundName}
+                              >
+                                {s.scheme_name || s.fundName}
+                              </button>
+                              <p className="text-[10px] text-t-secondary uppercase tracking-wider font-bold mt-0.5 overflow-hidden truncate">
+                                {s.scheme_category || s.schemeCategory}
+                              </p>
+                            </td>
+                            <td className="px-6 py-4 text-base font-black text-t-primary">
+                              {formatINR(s.monthlyAmount)}
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-black tracking-widest uppercase rounded-md border ${
+                                  s.status === 'active'
+                                    ? 'bg-green-50 text-green-700 border-green-200'
+                                    : s.status === 'paused'
+                                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                      : 'bg-slate-100 text-slate-600 border-slate-300'
+                                }`}
+                              >
+                                {s.status === 'active' && <MdPlayArrow className="text-sm" />}
+                                {s.status === 'paused' && <MdPause className="text-sm" />}
+                                {s.status === 'completed' && <MdStop className="text-sm" />}
+                                {s.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm font-bold text-t-primary">
+                              {new Date(s.nextDueDate).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </td>
+                            <td className="px-6 py-4 flex items-center justify-center gap-2">
+                              {canPay && (
+                                <button
+                                  onClick={() => handlePaySip(s._id)}
+                                  disabled={sipPaymentLoading === s._id}
+                                  className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-md border-none cursor-pointer transition-colors disabled:opacity-50"
+                                  title="Pay SIP"
+                                >
+                                  {sipPaymentLoading === s._id ? (
+                                    <div className="animate-spin text-lg">⟳</div>
+                                  ) : (
+                                    <MdOutlinePayments className="text-lg" />
+                                  )}
+                                </button>
                               )}
-                            </button>
-                            {s.status === 'active' ? (
+                              {s.status === 'active' ? (
+                                <button
+                                  onClick={() => handleSipToggle(s._id, 'paused')}
+                                  className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-md border-none cursor-pointer transition-colors"
+                                  title="Pause"
+                                >
+                                  <MdPause className="text-lg" />
+                                </button>
+                              ) : s.status === 'paused' ? (
+                                <button
+                                  onClick={() => handleSipToggle(s._id, 'active')}
+                                  className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-md border-none cursor-pointer transition-colors"
+                                  title="Resume"
+                                >
+                                  <MdPlayArrow className="text-lg" />
+                                </button>
+                              ) : null}
                               <button
-                                onClick={() => handleSipToggle(s._id, 'paused')}
-                                className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-md border-none cursor-pointer transition-colors"
-                                title="Pause"
+                                onClick={() => handleSipDeleteRequest(s._id)}
+                                className="p-2 bg-red-50 text-negative hover:bg-red-100 rounded-md border-none cursor-pointer transition-colors"
+                                title="Delete"
                               >
-                                <MdPause className="text-lg" />
+                                <MdDelete className="text-lg" />
                               </button>
-                            ) : s.status === 'paused' ? (
-                              <button
-                                onClick={() => handleSipToggle(s._id, 'active')}
-                                className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-md border-none cursor-pointer transition-colors"
-                                title="Resume"
-                              >
-                                <MdPlayArrow className="text-lg" />
-                              </button>
-                            ) : null}
-                            <button
-                              onClick={() => handleSipDelete(s._id)}
-                              className="p-2 bg-red-50 text-negative hover:bg-red-100 rounded-md border-none cursor-pointer transition-colors"
-                              title="Delete"
-                            >
-                              <MdDelete className="text-lg" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1539,6 +1587,12 @@ const ManageFunds = () => {
             setSellModalItem(null);
             showRefreshToast(msg);
           }}
+        />
+      )}
+      {deleteSipId && (
+        <DeleteSipModal
+          onClose={() => setDeleteSipId(null)}
+          onConfirm={confirmSipDelete}
         />
       )}
     </div>

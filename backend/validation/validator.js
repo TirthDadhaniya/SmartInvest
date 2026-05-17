@@ -189,7 +189,7 @@ const routeSchemas = {
         id: objectIdSchema,
       }),
       body: z.object({
-        currentNAV: z.coerce.number().positive("Current NAV must be positive"),
+        currentNAV: z.coerce.number().positive("Current NAV must be positive").optional(),
       }),
     }),
     delete: z.object({

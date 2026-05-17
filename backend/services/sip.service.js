@@ -34,10 +34,17 @@ const executeSIPInstalment = async ({ sipId, userId, currentNAV, executionDate }
   const todayDateOnly = normalizeToDateOnly(today);
   const dueDateOnly = normalizeToDateOnly(sip.nextDueDate);
 
-  if (todayDateOnly < dueDateOnly) {
+  // Allow execution if today is within 15 days of the due date (or past due)
+  const diffDays = Math.ceil((dueDateOnly - todayDateOnly) / (1000 * 60 * 60 * 24));
+
+  if (diffDays > 15) {
     return {
       success: false,
-      message: `SIP instalment is not due yet. Next due date is ${dueDateOnly.toDateString()}`,
+      message: `SIP instalment is not due yet. Next due date is ${dueDateOnly.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })}. You can pay up to 15 days in advance.`,
     };
   }
 

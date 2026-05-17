@@ -79,6 +79,79 @@ const STRESS_DROP_MAP = {
 };
 
 /**
+ * Asset class constants for classification.
+ */
+const ASSET_CLASSES = {
+  EQUITY: "equity",
+  DEBT: "debt",
+  HYBRID: "hybrid",
+  LIQUID: "liquid",
+  OTHER: "other",
+};
+
+/**
+ * Rates based on Indian financial regulations (2024-2026).
+ */
+const STAMP_DUTY_RATE = 0.00005; // 0.005% since July 2020
+const STT_RATE = 0.00001; // 0.001% Securities Transaction Tax for equity sell
+
+const TAX_RULES = {
+  EQUITY: {
+    LTCG_RATE: 0.125, // 12.5% after Budget 2024
+    STCG_RATE: 0.20,  // 20% after Budget 2024
+    EXEMPTION: 125000, // 1.25 Lakh exemption for LTCG
+    MIN_DAYS_FOR_LTCG: 365,
+  },
+  DEBT: {
+    RATE: 0.30, // Taxed at slab rate (estimating 30%)
+  }
+};
+
+/**
+ * Normalizes complex fund categories into standard asset classes.
+ * @param {string} schemeCategory - The category of the mutual fund scheme
+ * @returns {string} One of ASSET_CLASSES
+ */
+const getAssetClass = (schemeCategory) => {
+  const cat = (schemeCategory || "").toLowerCase();
+
+  if (cat.includes("liquid") || cat.includes("overnight")) return ASSET_CLASSES.LIQUID;
+
+  if (
+    cat.includes("debt") ||
+    cat.includes("income") ||
+    cat.includes("gilt") ||
+    cat.includes("bond") ||
+    cat.includes("money market") ||
+    cat.includes("duration") ||
+    cat.includes("psu") ||
+    cat.includes("short term") ||
+    cat.includes("ultra short")
+  )
+    return ASSET_CLASSES.DEBT;
+
+  if (
+    cat.includes("equity") ||
+    cat.includes("cap") ||
+    cat.includes("elss") ||
+    cat.includes("sector") ||
+    cat.includes("thematic") ||
+    cat.includes("index") ||
+    cat.includes("focused") ||
+    cat.includes("value") ||
+    cat.includes("contra") ||
+    cat.includes("dividend") ||
+    cat.includes("arbitrage") ||
+    cat.includes("growth")
+  )
+    return ASSET_CLASSES.EQUITY;
+
+  if (cat.includes("hybrid") || cat.includes("balanced")) return ASSET_CLASSES.HYBRID;
+
+  return ASSET_CLASSES.OTHER;
+};
+
+/**
  * Determines the stress test drop percentage based on scheme category
  * @param {string} schemeCategory - The category of the mutual fund scheme
  * @returns {number} The drop percentage as a decimal (e.g., 0.3 for 30%)
@@ -88,8 +161,12 @@ const getStressDrop = (schemeCategory) => {
   for (const [key, val] of Object.entries(STRESS_DROP_MAP)) {
     if (key !== "default" && cat.includes(key)) return val;
   }
-  if (cat.includes("equity")) return 0.3;
-  if (cat.includes("debt") || cat.includes("income")) return 0.05;
+
+  const assetClass = getAssetClass(schemeCategory);
+  if (assetClass === ASSET_CLASSES.EQUITY) return 0.3;
+  if (assetClass === ASSET_CLASSES.DEBT || assetClass === ASSET_CLASSES.LIQUID) return 0.05;
+  if (assetClass === ASSET_CLASSES.HYBRID) return 0.15;
+
   return STRESS_DROP_MAP.default;
 };
 
@@ -100,41 +177,110 @@ const getStressDrop = (schemeCategory) => {
  */
 const getDefaultExpenseRatio = (schemeCategory) => {
   const cat = (schemeCategory || "").toLowerCase();
+  const assetClass = getAssetClass(schemeCategory);
+
   if (cat.includes("index") || cat.includes("etf")) return 0.2;
-  if (cat.includes("liquid") || cat.includes("overnight")) return 0.25;
-  if (cat.includes("debt") || cat.includes("income")) return 0.6;
-  if (cat.includes("hybrid") || cat.includes("balanced")) return 1.2;
+  if (assetClass === ASSET_CLASSES.LIQUID) return 0.25;
+  if (assetClass === ASSET_CLASSES.DEBT) return 0.6;
+  if (assetClass === ASSET_CLASSES.HYBRID) return 1.2;
+
   if (cat.includes("small cap")) return 1.5;
   if (cat.includes("mid cap")) return 1.3;
   if (cat.includes("large cap")) return 0.8;
   if (cat.includes("flexi") || cat.includes("multi")) return 1.1;
   if (cat.includes("elss")) return 1.0;
-  if (cat.includes("equity")) return 1.25;
+
+  if (assetClass === ASSET_CLASSES.EQUITY) return 1.25;
   return 1.0;
 };
 
 /**
- * Calculates Long Term Capital Gains (LTCG) tax for equity investments
- * @param {number} totalProfitLoss - Total profit or loss realized
- * @returns {Object} Tax calculation details
+ * Calculates comprehensive tax estimates for a portfolio.
+ * Handles Equity (LTCG/STCG) and Debt (Slab rate).
+ * 
+ * @param {Array} investments - Array of processed investments with profitLoss, scheme_category, and purchaseDate
+ * @returns {Object} Tax breakdown and total estimates
  */
-const calculateLTCGTax = (totalProfitLoss) => {
-  const exemptionLimit = 100000;
-  const taxRate = 0.1;
-  const taxableAmount = Math.max(0, totalProfitLoss - exemptionLimit);
-  const estimatedTax = taxableAmount * taxRate;
+const calculateTaxEstimates = (investments) => {
+  let totalEquityLTCGProfit = 0;
+  let totalEquitySTCGProfit = 0;
+  let totalDebtProfit = 0;
+
+  const investmentDetails = investments.map((inv) => {
+    const assetClass = getAssetClass(inv.scheme_category);
+    const holdingDays = (Date.now() - new Date(inv.purchaseDate).getTime()) / (1000 * 60 * 60 * 24);
+    const profit = inv.profitLoss || 0;
+    
+    let taxType = "NONE";
+    let estTax = 0;
+
+    if (profit > 0) {
+      if (assetClass === ASSET_CLASSES.EQUITY || (inv.scheme_category || "").toLowerCase().includes("aggressive hybrid")) {
+        if (holdingDays > TAX_RULES.EQUITY.MIN_DAYS_FOR_LTCG) {
+          taxType = "EQUITY_LTCG";
+          totalEquityLTCGProfit += profit;
+        } else {
+          taxType = "EQUITY_STCG";
+          estTax = profit * TAX_RULES.EQUITY.STCG_RATE;
+          totalEquitySTCGProfit += profit;
+        }
+      } else {
+        // Debt, Liquid, etc. taxed at slab rate regardless of period
+        taxType = "DEBT_SLAB";
+        estTax = profit * TAX_RULES.DEBT.RATE;
+        totalDebtProfit += profit;
+      }
+    }
+
+    return {
+      ...inv,
+      taxType,
+      holdingDays: Math.floor(holdingDays),
+      estTaxBeforeExemption: estTax, 
+    };
+  });
+
+  // Calculate final LTCG tax after applying exemption
+  const taxableLTCGAmount = Math.max(0, totalEquityLTCGProfit - TAX_RULES.EQUITY.EXEMPTION);
+  const totalLTCGTax = taxableLTCGAmount * TAX_RULES.EQUITY.LTCG_RATE;
+  
+  // Distribute LTCG tax proportionally among LTCG investments for display
+  const finalInvestments = investmentDetails.map((inv) => {
+    let finalTax = inv.estTaxBeforeExemption;
+    if (inv.taxType === "EQUITY_LTCG" && totalEquityLTCGProfit > 0) {
+      finalTax = (inv.profitLoss / totalEquityLTCGProfit) * totalLTCGTax;
+    }
+    return {
+      ...inv,
+      estimatedTax: finalTax,
+      afterTaxProfit: inv.profitLoss - finalTax,
+    };
+  });
+
+  const totalSTCGTax = totalEquitySTCGProfit * TAX_RULES.EQUITY.STCG_RATE;
+  const totalDebtTax = totalDebtProfit * TAX_RULES.DEBT.RATE;
+  const totalEstimatedTax = totalLTCGTax + totalSTCGTax + totalDebtTax;
+
   return {
-    grossProfit: totalProfitLoss,
-    exemptionLimit,
-    taxableAmount,
-    taxRate,
-    estimatedTax,
-    netProfitAfterTax: totalProfitLoss - estimatedTax,
+    summary: {
+      totalProfit: totalEquityLTCGProfit + totalEquitySTCGProfit + totalDebtProfit,
+      equityLTCGProfit: totalEquityLTCGProfit,
+      equitySTCGProfit: totalEquitySTCGProfit,
+      debtProfit: totalDebtProfit,
+      ltcgExemption: TAX_RULES.EQUITY.EXEMPTION,
+      estimatedLTCGTax: totalLTCGTax,
+      estimatedSTCGTax: totalSTCGTax,
+      estimatedDebtTax: totalDebtTax,
+      totalTax: totalEstimatedTax,
+    },
+    investments: finalInvestments,
   };
 };
 
 /**
- * Calculates the break-even NAV considering potential exit loads
+ * Calculates the break-even NAV considering potential exit loads, stamp duty, and STT.
+ * Professional Formula: Break-Even NAV = Purchase NAV / ((1 - Stamp Duty) * (1 - Exit Load) * (1 - STT))
+ *
  * @param {number} purchaseNAV - The NAV at which units were purchased
  * @param {string} schemeCategory - The category of the mutual fund scheme
  * @param {Date|string} purchaseDate - The date of purchase
@@ -142,14 +288,50 @@ const calculateLTCGTax = (totalProfitLoss) => {
  */
 const calculateBreakEvenNAV = (purchaseNAV, schemeCategory, purchaseDate) => {
   const holdingDays = (Date.now() - new Date(purchaseDate).getTime()) / (1000 * 60 * 60 * 24);
+  const assetClass = getAssetClass(schemeCategory);
   const cat = (schemeCategory || "").toLowerCase();
-  // Simplified logic: 1% exit load for equity if held < 1 year
-  const exitLoadPct = cat.includes("equity") && holdingDays < 365 ? 1 : 0;
-  const breakEvenNAV = purchaseNAV * (1 + exitLoadPct / 100);
+
+  let exitLoadPct = 0;
+  let appliesSTT = false;
+
+  // 1. Equity & Equity-heavy Hybrids (1% load for 1 year, STT applies)
+  if (assetClass === ASSET_CLASSES.EQUITY || cat.includes("aggressive hybrid")) {
+    exitLoadPct = holdingDays < 365 ? 1.0 : 0;
+    appliesSTT = true;
+  }
+  // 2. Liquid Funds (Graded exit load for first 7 days)
+  else if (assetClass === ASSET_CLASSES.LIQUID) {
+    if (holdingDays < 1) exitLoadPct = 0.007;
+    else if (holdingDays < 2) exitLoadPct = 0.0065;
+    else if (holdingDays < 3) exitLoadPct = 0.006;
+    else if (holdingDays < 4) exitLoadPct = 0.0055;
+    else if (holdingDays < 5) exitLoadPct = 0.005;
+    else if (holdingDays < 6) exitLoadPct = 0.0045;
+    else exitLoadPct = 0;
+  }
+  // 3. Debt Funds (Typical 0.5% load for 30 days)
+  else if (assetClass === ASSET_CLASSES.DEBT) {
+    // Ultra-short and Money Market usually have 0 load
+    if (!cat.includes("ultra short") && !cat.includes("money market")) {
+      exitLoadPct = holdingDays < 30 ? 0.5 : 0;
+    }
+  }
+  // 4. Other Hybrids
+  else if (assetClass === ASSET_CLASSES.HYBRID) {
+    exitLoadPct = holdingDays < 365 ? 1.0 : 0;
+  }
+
+  const exitLoad = exitLoadPct / 100;
+  const stt = appliesSTT ? STT_RATE : 0;
+
+  // Apply the professional break-even formula
+  const breakEvenNAV = purchaseNAV / ((1 - STAMP_DUTY_RATE) * (1 - exitLoad) * (1 - stt));
+
   return {
-    breakEvenNAV,
+    breakEvenNAV: Number(breakEvenNAV.toFixed(4)),
     exitLoadPct,
     holdingDays: Math.floor(holdingDays),
+    assetClass,
   };
 };
 
@@ -262,9 +444,10 @@ module.exports = {
   normalizeToDateOnly,
   getYearsBetween,
   getMonthsBetween,
+  getAssetClass,
   getStressDrop,
   getDefaultExpenseRatio,
-  calculateLTCGTax,
+  calculateTaxEstimates,
   calculateBreakEvenNAV,
   calculateRequiredSIP,
   calculateCAGR,
