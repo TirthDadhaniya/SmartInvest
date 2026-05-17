@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import usePageTitle from '../utils/usePageTitle';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MdOutlineTrendingUp, MdOutlineArrowBack } from 'react-icons/md';
+import { MdOutlineTrendingUp, MdOutlineArrowBack, MdOutlineInfo } from 'react-icons/md';
 import {
   AreaChart,
   Area,
@@ -33,30 +33,34 @@ const findNavDaysAgo = (history, days) => {
 const calculateCagr = (current, past, years) =>
   ((Math.pow(current / past, 1 / years) - 1) * 100).toFixed(2);
 
-const calculateFutureValue = ({ calcType, calcAmount, calcDuration, calcRate }) => {
+const calculateComparison = ({ calcAmount, calcDuration, calcRate }) => {
   const r = calcRate / 100;
-  let fv = 0;
-  let inv = 0;
+  const i = r / 12;
+  const n = Math.max(1, calcDuration * 12);
+  const totalInvested = calcAmount * n;
 
-  if (calcType === 'SIP') {
-    const i = r / 12;
-    const n = calcDuration * 12;
-    if (i === 0) {
-      fv = calcAmount * n;
-      inv = calcAmount * n;
-    } else {
-      fv = calcAmount * ((Math.pow(1 + i, n) - 1) / i) * (1 + i);
-      inv = calcAmount * n;
-    }
+  // SIP FV
+  let sipFV = 0;
+  if (i === 0) {
+    sipFV = totalInvested;
   } else {
-    fv = calcAmount * Math.pow(1 + r, calcDuration);
-    inv = calcAmount;
+    sipFV = calcAmount * ((Math.pow(1 + i, n) - 1) / i) * (1 + i);
   }
 
+  // Lumpsum FV (of the same total invested amount)
+  const lumpsumFV = totalInvested * Math.pow(1 + r, calcDuration);
+
   return {
-    futureValue: fv || 0,
-    invested: inv || 0,
-    wealthGained: Math.max(0, fv - inv),
+    totalInvested,
+    sip: {
+      futureValue: sipFV || 0,
+      wealthGained: Math.max(0, sipFV - totalInvested),
+    },
+    lumpsum: {
+      futureValue: lumpsumFV || 0,
+      wealthGained: Math.max(0, lumpsumFV - totalInvested),
+    },
+    difference: Math.max(0, lumpsumFV - sipFV),
   };
 };
 
@@ -73,7 +77,6 @@ const Fund = () => {
   const timeframes = ['1M', '6M', '1Y', '3Y', 'All'];
 
   // Calculator state
-  const [calcType, setCalcType] = useState('SIP');
   const [calcAmount, setCalcAmount] = useState(5000);
   const [calcDuration, setCalcDuration] = useState(5);
   const [calcRate, setCalcRate] = useState(12);
@@ -130,16 +133,17 @@ const Fund = () => {
     fetchData();
   }, [schemeCode]);
 
-  const { futureValue, invested, wealthGained } = useMemo(
+  const comparisonData = useMemo(
     () =>
-      calculateFutureValue({
-        calcType,
+      calculateComparison({
         calcAmount,
         calcDuration,
         calcRate,
       }),
-    [calcType, calcAmount, calcDuration, calcRate]
+    [calcAmount, calcDuration, calcRate]
   );
+
+  const { totalInvested, sip, lumpsum, difference } = comparisonData;
 
   const history = useMemo(() => mfData?.data || [], [mfData]);
   const meta = useMemo(() => mfData?.meta || {}, [mfData]);
@@ -304,12 +308,17 @@ const Fund = () => {
                 {userInvestment.afterTaxProfit !== undefined && (
                   <div>
                     <p className="text-[10px] font-bold text-t-secondary uppercase mb-1">
-                      After Tax (LTCG)
+                      After Tax Est.
                     </p>
                     <p
                       className={`text-sm font-bold ${userInvestment.afterTaxProfit >= 0 ? 'text-positive' : 'text-negative'}`}
                     >
                       {formatINR(userInvestment.afterTaxProfit)}
+                      {userInvestment.taxType && (
+                        <span className="text-[8px] block opacity-60 uppercase">
+                          ({userInvestment.taxType.replace('_', ' ')})
+                        </span>
+                      )}
                     </p>
                   </div>
                 )}
@@ -413,28 +422,21 @@ const Fund = () => {
         {/* Savings Calculator */}
         <div className="bg-surface rounded-xl border border-border shadow-md overflow-hidden">
           <div className="p-6 border-b border-border">
-            <h3 className="text-lg font-bold text-t-primary mb-4 flex items-center justify-between">
-              Savings Calculator <MdOutlineTrendingUp className="text-primary text-xl" />
+            <h3 className="text-lg font-bold text-t-primary mb-1 flex items-center justify-between">
+              Growth Calculator <MdOutlineTrendingUp className="text-primary text-xl" />
             </h3>
-            <div className="flex bg-slate-100 p-1 rounded-lg w-full mb-6">
-              {['SIP', 'Lumpsum'].map(t => (
-                <button
-                  key={t}
-                  onClick={() => setCalcType(t)}
-                  className={`flex-1 py-1.5 text-sm font-bold rounded cursor-pointer border-none transition-all ${calcType === t ? 'bg-surface text-primary shadow-sm' : 'text-t-secondary bg-transparent'}`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
+            <p className="text-[10px] text-t-secondary font-bold uppercase tracking-wider mb-6">
+              Compare Monthly SIP vs. Upfront Lumpsum
+            </p>
+
             <div className="space-y-5">
               {[
                 {
-                  label: calcType === 'SIP' ? 'Monthly Amount' : 'One-time Amount',
+                  label: 'Monthly SIP Amount',
                   value: calcAmount,
                   setter: setCalcAmount,
                   min: 500,
-                  max: calcType === 'SIP' ? 100000 : 5000000,
+                  max: 100000,
                   step: 500,
                 },
                 {
@@ -460,7 +462,11 @@ const Fund = () => {
                       {s.label}
                     </label>
                     <span className="text-sm font-bold text-primary">
-                      {s.label.includes('%') ? s.value + '%' : formatINR(s.value)}
+                      {s.label.includes('%')
+                        ? s.value + '%'
+                        : s.label.includes('Amount')
+                          ? formatINR(s.value)
+                          : s.value + ' Years'}
                     </span>
                   </div>
                   <input
@@ -476,22 +482,58 @@ const Fund = () => {
               ))}
             </div>
           </div>
-          <div className="p-6 bg-slate-50 space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-t-secondary font-bold uppercase">
-                Est. Future Value
-              </span>
-              <span className="text-2xl font-black text-t-primary">{formatINR(futureValue)}</span>
+
+          {/* Comparison Results */}
+          <div className="p-6 bg-slate-50 space-y-4">
+            <div className="bg-white border border-border rounded-xl p-4 shadow-sm text-center">
+              <p className="text-[10px] font-black text-t-secondary uppercase tracking-widest mb-1">
+                Total Investment
+              </p>
+              <p className="text-2xl font-black text-t-primary">{formatINR(totalInvested)}</p>
             </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-t-secondary">Total Invested</span>
-              <span className="font-bold">{formatINR(invested)}</span>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl">
+                <p className="text-[9px] font-black text-indigo-700 uppercase tracking-widest mb-1">
+                  SIP Growth
+                </p>
+                <p className="text-sm font-black text-indigo-900">{formatINR(sip.futureValue)}</p>
+                <p className="text-[8px] font-bold text-indigo-600 mt-1">
+                  Wealth: +{formatINR(sip.wealthGained)}
+                </p>
+              </div>
+              <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-xl relative group">
+                <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mb-1">
+                  Lumpsum Growth
+                </p>
+                <p className="text-sm font-black text-emerald-900">
+                  {formatINR(lumpsum.futureValue)}
+                </p>
+                <p className="text-[8px] font-bold text-emerald-600 mt-1">
+                  Wealth: +{formatINR(lumpsum.wealthGained)}
+                </p>
+                <div className="absolute top-2 right-2 group-hover:block hidden">
+                  <MdOutlineInfo className="text-emerald-400 text-xs cursor-help" />
+                  <div className="absolute bottom-full right-0 mb-2 w-40 bg-slate-800 text-white text-[8px] p-2 rounded shadow-xl z-10 leading-tight font-medium">
+                    Shows growth if all {formatINR(totalInvested)} was invested today instead of
+                    monthly.
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between items-center text-sm p-3 bg-green-100/50 rounded-lg border border-green-200/50">
-              <span className="text-green-800 font-bold">Extra Returns</span>
-              <span className="text-green-700 font-black">{formatINR(wealthGained)}</span>
-            </div>
+
+            {difference > 0 && (
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 flex items-start gap-2">
+                <MdOutlineInfo className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-amber-800 leading-relaxed">
+                  <strong>Opportunity Cost:</strong> You gain{' '}
+                  <span className="font-black underline">{formatINR(difference)}</span> more by
+                  investing upfront as a Lumpsum compared to a monthly SIP.
+                </p>
+              </div>
+            )}
           </div>
+
           <div className="p-6 pt-0 bg-slate-50 space-y-3 flex gap-3 flex-col sm:flex-row xl:flex-col">
             <button
               onClick={() => navigate(`/manageFunds?schemeCode=${schemeCode}&sip=true`)}
