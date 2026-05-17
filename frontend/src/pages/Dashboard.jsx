@@ -84,16 +84,18 @@ const Dashboard = () => {
     setSipPaymentLoading(true);
     setSipPaymentMessage('');
     try {
-      await api.post(`/api/sips/${sipId}/execute`, {});
-      setSipPaymentMessage('SIP instalment executed successfully!');
-      // Refresh data
-      await fetchData();
-      setTimeout(() => setSipPaymentMessage(''), 3000);
+      const res = await api.post(`/api/sips/${sipId}/execute`, {});
+      if (res.data.success) {
+        setSipPaymentMessage('SIP instalment executed successfully!');
+        // Refresh data
+        await fetchData();
+        setTimeout(() => setSipPaymentMessage(''), 3000);
+      }
     } catch (err) {
-      setSipPaymentMessage(
-        err?.response?.data?.message || 'Failed to execute SIP. Please try again.'
-      );
-      setTimeout(() => setSipPaymentMessage(''), 4000);
+      const errorMsg =
+        err?.response?.data?.message || 'Failed to execute SIP. Please try again.';
+      setSipPaymentMessage(errorMsg);
+      setTimeout(() => setSipPaymentMessage(''), 5000);
     } finally {
       setSipPaymentLoading(false);
     }

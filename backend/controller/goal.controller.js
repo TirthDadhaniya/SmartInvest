@@ -72,7 +72,9 @@ exports.getGoalProgress = async (req, res) => {
     // 1. Calculate returns (CAGR)
     const now = new Date();
     const holdingYears = Math.max(0.1, (now - earliestInvestmentDate) / (1000 * 60 * 60 * 24 * 365.25));
-    const annualReturn = Math.max(0.05, Math.pow(totalCurrentValue / totalInvested, 1 / holdingYears) - 1);
+    const rawCAGR = Math.pow(totalCurrentValue / totalInvested, 1 / holdingYears) - 1;
+    // Professional Rule: Apply a floor (5%) and ceiling (18%) for realistic projections
+    const annualReturn = Math.max(0.05, Math.min(0.18, rawCAGR));
     const monthlyRate = annualReturn / 12;
 
     // 2. Goal timing

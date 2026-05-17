@@ -78,20 +78,27 @@ exports.summary = async (req, res) => {
     let equityCurrentValue = 0;
     let totalExpenseWeight = 0;
     const categoryAllocation = {};
+    const assetClassAllocation = {};
     const uniqueCategories = new Set();
+    const uniqueAssetClasses = new Set();
 
     const processedFunds = investments.map((inv) => {
       const category = portfolioService.simplifyCategory(inv.scheme_category);
+      const assetClass = calcService.getAssetClass(inv.scheme_category);
+      
       uniqueCategories.add(category);
+      uniqueAssetClasses.add(assetClass);
       
       categoryAllocation[category] = (categoryAllocation[category] || 0) + inv.currentValue;
+      assetClassAllocation[assetClass] = (assetClassAllocation[assetClass] || 0) + inv.currentValue;
 
-      if (category === "equity" || category === "index") {
+      if (assetClass === "equity" || category === "Equity" || category === "Index" || category === "Tax-Saving") {
         equityCurrentValue += inv.currentValue;
       }
       
-      const expenseRatio = inv.expenseRatio || 1.0;
-      totalExpenseWeight += inv.investedAmount * expenseRatio;
+      // Professional Rule: Expense ratio is charged on Current Value, not Invested Amount
+      const expenseRatio = inv.expenseRatio || calcService.getDefaultExpenseRatio(inv.scheme_category);
+      totalExpenseWeight += inv.currentValue * expenseRatio;
 
       const unrealizedPL = inv.currentValue - inv.investedAmount;
       const plPercentage = (unrealizedPL / inv.investedAmount) * 100;
@@ -100,6 +107,7 @@ exports.summary = async (req, res) => {
         code: inv.scheme_code,
         fundName: inv.scheme_name,
         category,
+        assetClass,
         currentNav: inv.currentNav,
         currentValue: inv.currentValue.toFixed(2),
         unrealizedPL: unrealizedPL.toFixed(2),
@@ -110,17 +118,18 @@ exports.summary = async (req, res) => {
     const totalProfitLoss = unrealizedProfit;
     const totalPLPercentage = totalInvested > 0 ? (unrealizedProfit / totalInvested) * 100 : 0;
     const equityPercentage = totalCurrentValue > 0 ? (equityCurrentValue / totalCurrentValue) * 100 : 0;
-    const weightedExpenseRatio = totalInvested > 0 ? totalExpenseWeight / totalInvested : 0;
+    const weightedExpenseRatio = totalCurrentValue > 0 ? totalExpenseWeight / totalCurrentValue : 0;
+    const assetClassCount = uniqueAssetClasses.size;
     const categoryCount = uniqueCategories.size;
 
     // HEALTH SCORE (0-100)
     let scoreBreakdown = { diversification: 0, allocation: 0, riskMatch: 0, expenseRatio: 0, goals: 0, sips: 0 };
 
     // 1. Diversification (Max 30)
-    if (categoryCount === 1) scoreBreakdown.diversification = 5;
-    else if (categoryCount === 2) scoreBreakdown.diversification = 15;
-    else if (categoryCount === 3) scoreBreakdown.diversification = 25;
-    else if (categoryCount >= 4) scoreBreakdown.diversification = 30;
+    // Reward variety across Asset Classes (Equity, Debt, Hybrid, Liquid)
+    if (assetClassCount === 1) scoreBreakdown.diversification = 10;
+    else if (assetClassCount === 2) scoreBreakdown.diversification = 20;
+    else if (assetClassCount >= 3) scoreBreakdown.diversification = 30;
 
     // 2. Allocation Balance (Max 25)
     if (equityPercentage >= 40 && equityPercentage <= 70) scoreBreakdown.allocation = 25;
@@ -149,7 +158,38 @@ exports.summary = async (req, res) => {
     scoreBreakdown.goals = goalsCount >= 2 ? 10 : (goalsCount === 1 ? 5 : 0);
 
     // 6. SIP Consistency (Max 10)
-    scoreBreakdown.sips = sipsCount >= 2 ? 10 : (sipsCount === 1 ? 5 : 0);
+    // Check if total SIP amount covers the aggregate "Required SIP" for all goals
+    const activeSIPs = await SIP.find({ userID: userId, status: "active" }).lean();
+    const totalSIPMonthly = activeSIPs.reduce((sum, s) => sum + s.monthlyAmount, 0);
+    
+    // Calculate total required SIP for all goals
+    const now = new Date();
+    const holdingYears = calcService.getYearsBetween(stats.earliestInvestmentDate, now);
+    const annualReturn = calcService.calculateCAGR(totalInvested, totalCurrentValue, holdingYears);
+    // Professional Rule: Apply a floor (5%) and ceiling (18%) for realistic projections
+    const annualReturnPct = Math.max(5, Math.min(18, annualReturn * 100));
+    
+    const goals = await Goal.find({ userID: userId }).lean();
+    let totalRequiredSIP = 0;
+    
+    goals.forEach(goal => {
+      const monthsRemaining = calcService.getMonthsBetween(now, goal.targetDate);
+      const projectedValue = totalCurrentValue * (goals.length > 0 ? (1 / goals.length) : 0) * Math.pow(1 + annualReturnPct / 1200, monthsRemaining);
+      const gap = goal.targetAmount - projectedValue;
+      if (gap > 0) {
+        totalRequiredSIP += calcService.calculateRequiredSIP(gap, monthsRemaining, annualReturnPct);
+      }
+    });
+
+    if (totalRequiredSIP === 0) {
+        scoreBreakdown.sips = activeSIPs.length > 0 ? 10 : 0;
+    } else {
+        const sipCoverage = totalSIPMonthly / totalRequiredSIP;
+        if (sipCoverage >= 1.0) scoreBreakdown.sips = 10;
+        else if (sipCoverage >= 0.5) scoreBreakdown.sips = 7;
+        else if (sipCoverage > 0) scoreBreakdown.sips = 4;
+        else scoreBreakdown.sips = 0;
+    }
 
     const finalScore = Object.values(scoreBreakdown).reduce((sum, val) => sum + val, 0);
 
@@ -203,7 +243,7 @@ exports.summary = async (req, res) => {
 };
 
 /**
- * Calculates LTCG tax estimates and after-tax returns.
+ * Calculates STCG/LTCG tax estimates and after-tax returns based on Budget 2024.
  * GET /api/portfolio/tax-analysis
  */
 exports.getTaxAnalysis = async (req, res) => {
@@ -212,34 +252,28 @@ exports.getTaxAnalysis = async (req, res) => {
     if (stats.investments.length === 0) {
       return res.json({ 
         success: true, 
-        data: { taxInfo: calcService.calculateLTCGTax(0), investments: [] } 
+        data: { 
+          summary: { totalTax: 0, totalProfit: 0 }, 
+          investments: [],
+          totalInvested: 0,
+          totalCurrentValue: 0
+        } 
       });
     }
 
-    const taxInfo = calcService.calculateLTCGTax(stats.totalProfitLoss);
-
-    const investmentsWithTax = stats.investments.map((inv) => {
-      let proportionalTax = 0;
-      if (stats.totalProfitLoss > 0 && inv.profitLoss > 0) {
-        proportionalTax = (inv.profitLoss / stats.totalProfitLoss) * taxInfo.estimatedTax;
-      }
-      return {
-        ...inv,
-        estimatedTax: proportionalTax,
-        afterTaxProfit: inv.profitLoss - proportionalTax,
-        afterTaxReturn: ((inv.profitLoss - proportionalTax) / inv.investedAmount) * 100,
-      };
-    });
+    const taxData = calcService.calculateTaxEstimates(stats.investments);
 
     res.json({
       success: true,
       data: {
-        taxInfo,
+        taxInfo: taxData.summary,
         totalInvested: stats.totalInvested,
         totalCurrentValue: stats.totalCurrentValue,
-        netReturnAfterTax: taxInfo.netProfitAfterTax,
-        netReturnPercentAfterTax: stats.totalInvested > 0 ? (taxInfo.netProfitAfterTax / stats.totalInvested) * 100 : 0,
-        investments: investmentsWithTax,
+        netReturnAfterTax: taxData.summary.totalProfit - taxData.summary.totalTax,
+        netReturnPercentAfterTax: stats.totalInvested > 0 
+          ? ((taxData.summary.totalProfit - taxData.summary.totalTax) / stats.totalInvested) * 100 
+          : 0,
+        investments: taxData.investments,
       },
     });
   } catch (err) {
@@ -430,7 +464,9 @@ exports.getGoalGaps = async (req, res) => {
     const stats = await portfolioService.getPortfolioStats(req.user._id);
     const now = new Date();
     const holdingYears = calcService.getYearsBetween(stats.earliestInvestmentDate, now);
-    const annualReturn = calcService.calculateCAGR(stats.totalInvested, stats.totalCurrentValue, holdingYears);
+    const rawCAGR = calcService.calculateCAGR(stats.totalInvested, stats.totalCurrentValue, holdingYears);
+    // Professional Rule: Apply a floor (5%) and ceiling (18%) for realistic projections
+    const annualReturn = Math.max(0.05, Math.min(0.18, rawCAGR));
     const annualReturnPct = annualReturn * 100;
 
     const goalsWithGap = goals.map((goal) => {
@@ -538,13 +574,28 @@ exports.getExpenseDrain = async (req, res) => {
 
     const annualCost = (stats.totalCurrentValue * stats.weightedExpenseRatio) / 100;
 
+    // Professional Rule: Calculate Compounded Opportunity Cost (Lost Wealth)
+    // Instead of linear cost, show what that money would have been worth if invested.
+    const now = new Date();
+    const holdingYears = calcService.getYearsBetween(stats.earliestInvestmentDate, now);
+    const rawCAGR = calcService.calculateCAGR(stats.totalInvested, stats.totalCurrentValue, holdingYears);
+    const annualReturn = Math.max(0.05, Math.min(0.18, rawCAGR));
+    
+    const years = 10;
+    const expenseRatioDecimal = stats.weightedExpenseRatio / 100;
+    
+    // Lost Wealth = Future Value (without fees) - Future Value (with fees)
+    const fvWithoutFees = stats.totalCurrentValue * Math.pow(1 + annualReturn, years);
+    const fvWithFees = stats.totalCurrentValue * Math.pow(1 + annualReturn - expenseRatioDecimal, years);
+    const tenYearLostWealth = fvWithoutFees - fvWithFees;
+
     res.json({
       success: true,
       data: {
         totalCurrentValue: Math.round(stats.totalCurrentValue),
         weightedExpenseRatio: Math.round(stats.weightedExpenseRatio * 100) / 100,
         annualCost: Math.round(annualCost),
-        tenYearCost: Math.round(annualCost * 10),
+        tenYearCost: Math.round(tenYearLostWealth),
         investments: investmentDetails
       }
     });

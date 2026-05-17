@@ -7,15 +7,49 @@ const Investment = require('../models/Investment');
  * @param {string} category - Raw category from MF API
  * @returns {string} - Simplified category
  */
-const simplifyCategory = category => {
-  if (!category) return 'Other';
+const simplifyCategory = (category) => {
+  if (!category) return "Other";
   const cat = category.toLowerCase();
-  if (cat.includes('equity') || cat.includes('growth')) return 'Equity';
-  if (cat.includes('debt') || cat.includes('income') || cat.includes('liquid')) return 'Debt';
-  if (cat.includes('hybrid') || cat.includes('balanced')) return 'Hybrid';
-  if (cat.includes('index') || cat.includes('etf')) return 'Index';
-  if (cat.includes('tax') || cat.includes('elss')) return 'Tax-Saving';
-  return 'Other';
+
+  // Index funds
+  if (cat.includes("index") || cat.includes("etf")) return "Index";
+
+  // Tax saving
+  if (cat.includes("tax") || cat.includes("elss")) return "Tax-Saving";
+
+  // Equity
+  if (
+    cat.includes("equity") ||
+    cat.includes("cap") ||
+    cat.includes("sector") ||
+    cat.includes("thematic") ||
+    cat.includes("focused") ||
+    cat.includes("value") ||
+    cat.includes("contra") ||
+    cat.includes("dividend") ||
+    cat.includes("arbitrage") ||
+    cat.includes("growth")
+  )
+    return "Equity";
+
+  // Debt & Liquid
+  if (
+    cat.includes("debt") ||
+    cat.includes("income") ||
+    cat.includes("liquid") ||
+    cat.includes("overnight") ||
+    cat.includes("gilt") ||
+    cat.includes("bond") ||
+    cat.includes("money market") ||
+    cat.includes("duration") ||
+    cat.includes("psu")
+  )
+    return "Debt";
+
+  // Hybrid
+  if (cat.includes("hybrid") || cat.includes("balanced")) return "Hybrid";
+
+  return "Other";
 };
 
 /**
@@ -105,7 +139,7 @@ const getPortfolioStats = async (userId, options = {}) => {
     uniqueCategories.add(category);
     categoryAllocation[category] = (categoryAllocation[category] || 0) + currentValue;
 
-    if (category === 'Equity' || category === 'Index') {
+    if (category === "Equity" || category === "Index" || category === "Tax-Saving") {
       equityValue += currentValue;
     }
 
