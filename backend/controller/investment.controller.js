@@ -80,8 +80,8 @@ exports.createInvestment = async (req, res) => {
 };
 
 /**
- * Adds more units to an existing investment.
- * Recalculates weighted average purchase NAV.
+ * Adds more units to an existing fund position.
+ * Creates a NEW investment record to preserve purchase date history for tax accuracy.
  * POST /api/investments/:id/buy-more
  */
 exports.buyMoreInvestment = async (req, res) => {
@@ -89,13 +89,14 @@ exports.buyMoreInvestment = async (req, res) => {
     const { investedAmount, purchaseNAV, purchaseDate } = req.body;
     const explicitUnits = Number(req.body.units || 0);
 
-    const investment = await Investment.findOne({
+    // Find the reference investment to copy metadata (fund name, category, etc.)
+    const referenceInv = await Investment.findOne({
       _id: req.params.id,
       userID: req.user._id,
     });
 
-    if (!investment) {
-      return res.status(404).json({ success: false, message: "Investment not found" });
+    if (!referenceInv) {
+      return res.status(404).json({ success: false, message: "Reference investment not found" });
     }
 
     const amount = Number(investedAmount || 0);
@@ -106,24 +107,30 @@ exports.buyMoreInvestment = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid buy details" });
     }
 
-    const prevUnits = Number(investment.units || 0);
-    const prevInvested = Number(investment.investedAmount || 0);
-    
-    // Update existing record with weighted average cost
-    const nextUnits = prevUnits + units;
-    const nextInvestedAmount = prevInvested + amount;
+    // Create a NEW record for this purchase installment
+    const newInvestment = await createInvestment({
+      userID: req.user._id,
+      scheme_code: referenceInv.scheme_code,
+      scheme_name: referenceInv.scheme_name,
+      fund_house: referenceInv.fund_house,
+      scheme_type: referenceInv.scheme_type,
+      scheme_category: referenceInv.scheme_category,
+      investedAmount: amount,
+      purchaseNAV: nav,
+      purchaseDate: purchaseDate || new Date(),
+      type: "lumpsum",
+      expenseRatio: referenceInv.expenseRatio,
+    });
 
-    investment.units = nextUnits;
-    investment.investedAmount = nextInvestedAmount;
-    investment.purchaseNAV = nextUnits > 0 ? nextInvestedAmount / nextUnits : investment.purchaseNAV;
-    
-    await investment.save();
+    if (newInvestment?.error) {
+        return res.status(400).json({ success: false, message: newInvestment.error });
+    }
 
     // Log transaction
     await createTransaction({
       userID: req.user._id,
-      scheme_code: investment.scheme_code,
-      scheme_name: investment.scheme_name,
+      scheme_code: referenceInv.scheme_code,
+      scheme_name: referenceInv.scheme_name,
       type: "buy",
       amount,
       units,
@@ -131,10 +138,10 @@ exports.buyMoreInvestment = async (req, res) => {
       date: purchaseDate ? new Date(purchaseDate) : new Date(),
     });
 
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
-      message: "Investment updated successfully",
-      data: investment,
+      message: "Additional units added successfully",
+      data: newInvestment,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

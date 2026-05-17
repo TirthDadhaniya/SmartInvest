@@ -80,6 +80,7 @@ const STRESS_DROP_MAP = {
 
 /**
  * Asset class constants for classification.
+ * Standardized to lowercase across the application.
  */
 const ASSET_CLASSES = {
   EQUITY: "equity",

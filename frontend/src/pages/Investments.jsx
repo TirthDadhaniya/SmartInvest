@@ -16,6 +16,8 @@ import {
   MdOutlineInfo,
   MdOutlineDownload,
   MdOutlinePayments,
+  MdExpandMore,
+  MdExpandLess,
 } from 'react-icons/md';
 import {
   LineChart,
@@ -64,6 +66,7 @@ const MyInvestments = () => {
   const [sortOrder, setSortOrder] = useState('Name (A-Z)');
 
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [expandedSchemes, setExpandedSchemes] = useState(new Set());
   const [deleteModalItem, setDeleteModalItem] = useState(null);
   const [selectedWhatIfFund, setSelectedWhatIfFund] = useState(null);
   const [whatIfAmount, setWhatIfAmount] = useState('');
@@ -109,6 +112,7 @@ const MyInvestments = () => {
           profitLoss: t.profitLoss,
           currentNAV,
           purchaseNAV: t.purchaseNAV,
+          purchaseDate: t.purchaseDate,
           units: t.units,
           afterTaxProfit: t.afterTaxProfit,
           estimatedTax: t.estimatedTax,
@@ -124,7 +128,7 @@ const MyInvestments = () => {
       const uniqueSchemes = [...new Set(mergedInvs.map(i => i.schemeCode))];
       const newHistoryCache = {};
 
-      // Optimized fetch: Get the last 30 days for sparklines to ensure we have at least 7 points
+      // Optimized fetch: Get the last 30 days for sparklines
       const today = new Date();
       const endDate = today.toISOString().split('T')[0];
       const thirtyDaysAgo = new Date();
@@ -158,13 +162,57 @@ const MyInvestments = () => {
     loadData();
   }, []);
 
+  const toggleExpand = schemeCode => {
+    const next = new Set(expandedSchemes);
+    if (next.has(schemeCode)) next.delete(schemeCode);
+    else next.add(schemeCode);
+    setExpandedSchemes(next);
+  };
+
   const triggerDataRefresh = () => {
     loadData();
     fetchPortfolio();
   };
 
+  // Grouping & Filtering
   const processedItems = useMemo(() => {
-    const filtered = [...investments]
+    // 1. Group by schemeCode
+    const groups = {};
+    investments.forEach(inv => {
+      if (!groups[inv.schemeCode]) {
+        groups[inv.schemeCode] = {
+          schemeCode: inv.schemeCode,
+          fundName: inv.fundName,
+          category: inv.category,
+          schemeCategory: inv.schemeCategory,
+          investedAmount: 0,
+          currentValue: 0,
+          units: 0,
+          profitLoss: 0,
+          currentNAV: inv.currentNAV, // should be same for all in group
+          installments: [],
+        };
+      }
+      const g = groups[inv.schemeCode];
+      g.investedAmount += inv.investedAmount;
+      g.currentValue += inv.currentValue;
+      g.units += inv.units;
+      g.profitLoss += inv.profitLoss;
+      g.installments.push(inv);
+    });
+
+    // 2. Finalize group metrics
+    const groupedList = Object.values(groups).map(g => {
+      g.returnPercent = (g.profitLoss / g.investedAmount) * 100;
+      g.purchaseNAV = g.investedAmount / g.units;
+      // Find representative break-even (weighted avg or just first)
+      g.breakEvenNAV = g.installments[0].breakEvenNAV; 
+      g.isAboveBreakEven = g.currentNAV >= g.breakEvenNAV;
+      return g;
+    });
+
+    // 3. Filter
+    const filtered = groupedList
       .filter(item => {
         if (!search.trim()) return true;
         return item.fundName.toLowerCase().includes(search.toLowerCase());
@@ -175,6 +223,7 @@ const MyInvestments = () => {
         return category === categoryFilter.toLowerCase();
       });
 
+    // 4. Sort
     filtered.sort((a, b) => {
       switch (sortOrder) {
         case 'Name (A-Z)':
@@ -643,159 +692,195 @@ const MyInvestments = () => {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {currentView.map(item => {
-                  const isPositive = item.returnPercent >= 0;
+                {currentView.map(group => {
+                  const isPositive = group.returnPercent >= 0;
+                  const isExpanded = expandedSchemes.has(group.schemeCode);
                   return (
-                    <div
-                      key={item._id}
-                      onClick={() => navigate(`/fund/${item.schemeCode}`)}
-                      className="group flex bg-surface hover:bg-slate-50 transition-all cursor-pointer relative"
-                    >
-                      {/* <div
-                        className={`absolute left-0 top-0 bottom-0 w-1 transition-colors duration-300 ${isPositive ? 'group-hover:bg-green-500' : 'group-hover:bg-red-500'}`}
-                      /> */}
-
-                      {/* Fund Name + Category */}
-                      <div className="min-w-45 pl-6 pr-4 py-4 w-[42%] text-left">
-                        <h3
-                          className="font-extrabold text-t-primary text-md truncate tracking-tight"
-                          title={item.fundName}
-                        >
-                          {item.fundName}
-                        </h3>
-                        <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-sm bg-slate-100/80 text-[10px] uppercase font-bold tracking-wider text-t-secondary border border-border">
-                          {item.schemeCategory || 'Fund Category'}
-                        </div>
-                      </div>
-
-                      {/* Invested vs Current Value */}
-                      <div className="flex flex-col py-4 px-4 w-[12%] text-right ">
-                        <span className="text-lg font-black text-t-primary">
-                          {formatINR(item.currentValue)}
-                        </span>
-                        <span className="text-[12px] text-t-secondary mt-0.5">
-                          {`${isPositive ? 'Profit:' : 'Loss:'}`}{' '}
-                          <span
-                            className={`font-bold ${isPositive ? 'text-positive' : 'text-negative'}`}
-                          >
-                            {formatINR(Math.abs(item.profitLoss))}
-                          </span>
-                        </span>
-                      </div>
-
-                      {/* Return % and Profit/Loss */}
-                      <div className="flex flex-col py-4 px-4 w-[10%] text-right ">
-                        <div
-                          className={`text-lg font-black ${isPositive ? 'text-positive' : 'text-negative'}`}
-                        >
-                          {isPositive ? '+' : ''}
-                          {formatPercent(item.returnPercent)}
-                        </div>
-                        {item.afterTaxProfit !== undefined && (
-                          <div className="text-[10px] mt-0.5 text-right flex flex-col items-end">
-                            {item.estimatedTax > 0 ? (
-                              <>
-                                <span className="text-slate-400">
-                                  After tax:{' '}
-                                  <span className="font-bold">{formatINR(item.afterTaxProfit)}</span>
-                                </span>
-                                <span className="text-[8px] font-black uppercase tracking-tighter text-indigo-400 bg-indigo-50 px-1 rounded">
-                                  {item.taxType?.replace('_', ' ')}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-green-500 font-bold">No tax liability</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/*Units & NAV */}
-                      <div className="flex flex-col py-4 pr-4 w-[10%] text-right ">
-                        <span className="text-base font-bold text-t-primary">
-                          {item.units ? item.units.toFixed(2) : 'Units'}{' '}
-                        </span>
-
-                        <span className="text-[12px] text-t-secondary mt-0.5">
-                          {`NAV: `}{' '}
-                          <span className="font-bold ">
-                            {item.purchaseNAV ? formatNAV(item.purchaseNAV) : 'NAV'}
-                          </span>
-                        </span>
-                      </div>
-
-                      {/* Break-Even */}
-                      <div className="flex flex-col py-4 pr-4 w-[10%] text-right ">
-                        <span
-                          className={`text-base font-bold ${item.isAboveBreakEven ? `text-green-600` : `text-amber-600`}`}
-                        >
-                          {formatNAV(item.breakEvenNAV)}
-                        </span>
-                        <span className="text-[12px] text-t-secondary mt-0.5">
-                          Curr: <span className="font-bold ">{formatNAV(item.currentNAV)}</span>
-                        </span>
-                      </div>
-
-                      {/* 7Day Trend */}
-                      <div className="py-4 w-[12%] flex flex-col items-center  ">
-                        {(() => {
-                          const history = historyCache[item.schemeCode] || [];
-                          const isTrendUp =
-                            history.length >= 2 &&
-                            parseFloat(history[0]?.nav) >=
-                              parseFloat(history[Math.min(6, history.length - 1)]?.nav);
-                          return (
-                            <span
-                              className={`w-22 h-8 rounded overflow-hidden relative border flex items-center justify-center ${
-                                isTrendUp
-                                  ? 'bg-emerald-50 border-emerald-100'
-                                  : 'bg-rose-50 border-rose-100'
-                              }`}
-                            >
-                              {renderSparkline(item.schemeCode)}
-                            </span>
-                          );
-                        })()}
-                      </div>
-
-                      {/* Action Menu */}
-                      <div className="py-4 pr-4 w-[4%] flex justify-end ">
-                        <div className="relative">
+                    <React.Fragment key={group.schemeCode}>
+                      {/* GROUP HEADER ROW */}
+                      <div
+                        onClick={() => navigate(`/fund/${group.schemeCode}`)}
+                        className="group flex bg-surface hover:bg-slate-50 transition-all cursor-pointer relative items-center"
+                      >
+                        {/* Fund Name + Category */}
+                        <div className="min-w-45 pl-6 pr-4 py-4 w-[42%] text-left flex items-center gap-3">
                           <button
                             onClick={e => {
                               e.stopPropagation();
-                              setOpenMenuId(openMenuId === item._id ? null : item._id);
+                              toggleExpand(group.schemeCode);
                             }}
-                            className="p-2 text-t-placeholder hover:text-t-primary hover:bg-slate-200 rounded-full transition-colors border-none bg-transparent cursor-pointer"
+                            className="p-1 hover:bg-slate-200 rounded transition-colors text-t-secondary border-none bg-transparent cursor-pointer flex items-center"
+                            title={isExpanded ? "Collapse Installments" : "View Installments"}
                           >
-                            <MdOutlineMoreVert className="text-xl" />
+                            {isExpanded ? <MdExpandLess className="text-xl" /> : <MdExpandMore className="text-xl" />}
                           </button>
-                          {openMenuId === item._id && (
-                            <div
-                              className="absolute right-0 top-10 w-44 bg-white rounded-xl shadow-2xl border border-slate-100 py-2 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
-                              onClick={e => e.stopPropagation()}
+                          <div className="truncate">
+                            <h3
+                              className="font-extrabold text-t-primary text-md truncate tracking-tight"
+                              title={group.fundName}
                             >
-                              <button
-                                className="w-full text-left px-5 py-2.5 text-sm font-bold text-t-primary hover:bg-slate-50 border-none bg-transparent cursor-pointer flex items-center justify-between"
-                                onClick={() => navigate(`/fund/${item.schemeCode}`)}
-                              >
-                                View Details <span>→</span>
-                              </button>
-                              <div className="h-px bg-slate-100 my-1 mx-2"></div>
-                              <button
-                                className="w-full text-left px-5 py-2.5 text-xs uppercase tracking-wide font-black text-negative hover:bg-red-500 hover:text-white border-none bg-transparent cursor-pointer transition-colors"
-                                onClick={() => {
-                                  setOpenMenuId(null);
-                                  setDeleteModalItem(item);
-                                }}
-                              >
-                                Delete
-                              </button>
+                              {group.fundName}
+                            </h3>
+                            <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-sm bg-slate-100/80 text-[10px] uppercase font-bold tracking-wider text-t-secondary border border-border">
+                              {group.schemeCategory || 'Fund Category'}
                             </div>
-                          )}
+                          </div>
                         </div>
+
+                        {/* Invested vs Current Value */}
+                        <div className="flex flex-col py-4 px-4 w-[12%] text-right ">
+                          <span className="text-lg font-black text-t-primary">
+                            {formatINR(group.currentValue)}
+                          </span>
+                          <span className="text-[12px] text-t-secondary mt-0.5">
+                            {`${isPositive ? 'Profit:' : 'Loss:'}`}{' '}
+                            <span
+                              className={`font-bold ${isPositive ? 'text-positive' : 'text-negative'}`}
+                            >
+                              {formatINR(Math.abs(group.profitLoss))}
+                            </span>
+                          </span>
+                        </div>
+
+                        {/* Return % and Profit/Loss */}
+                        <div className="flex flex-col py-4 px-4 w-[10%] text-right ">
+                          <div
+                            className={`text-lg font-black ${isPositive ? 'text-positive' : 'text-negative'}`}
+                          >
+                            {isPositive ? '+' : ''}
+                            {formatPercent(group.returnPercent)}
+                          </div>
+                          <div className="text-[10px] text-t-placeholder font-bold">
+                            {group.installments.length} {group.installments.length === 1 ? 'record' : 'records'}
+                          </div>
+                        </div>
+
+                        {/*Units & NAV */}
+                        <div className="flex flex-col py-4 pr-4 w-[10%] text-right ">
+                          <span className="text-base font-bold text-t-primary">
+                            {group.units ? group.units.toFixed(2) : 'Units'}{' '}
+                          </span>
+
+                          <span className="text-[12px] text-t-secondary mt-0.5">
+                            {`Avg: `}{' '}
+                            <span className="font-bold ">
+                              {group.purchaseNAV ? formatNAV(group.purchaseNAV) : 'NAV'}
+                            </span>
+                          </span>
+                        </div>
+
+                        {/* Break-Even */}
+                        <div className="flex flex-col py-4 pr-4 w-[10%] text-right ">
+                          <span
+                            className={`text-base font-bold ${group.isAboveBreakEven ? `text-green-600` : `text-amber-600`}`}
+                          >
+                            {formatNAV(group.breakEvenNAV)}
+                          </span>
+                          <span className="text-[12px] text-t-secondary mt-0.5">
+                            Curr: <span className="font-bold ">{formatNAV(group.currentNAV)}</span>
+                          </span>
+                        </div>
+
+                        {/* 7Day Trend */}
+                        <div className="py-4 w-[12%] flex flex-col items-center  ">
+                          {(() => {
+                            const history = historyCache[group.schemeCode] || [];
+                            const isTrendUp =
+                              history.length >= 2 &&
+                              parseFloat(history[0]?.nav) >=
+                                parseFloat(history[Math.min(6, history.length - 1)]?.nav);
+                            return (
+                              <span
+                                className={`w-22 h-8 rounded overflow-hidden relative border flex items-center justify-center ${
+                                  isTrendUp
+                                    ? 'bg-emerald-50 border-emerald-100'
+                                    : 'bg-rose-50 border-rose-100'
+                                }`}
+                              >
+                                {renderSparkline(group.schemeCode)}
+                              </span>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Spacer for Action Menu width match */}
+                        <div className="py-4 pr-4 w-[4%]"></div>
                       </div>
-                    </div>
+
+                      {/* INDIVIDUAL INSTALLMENTS (EXPANDABLE) */}
+                      {isExpanded && (
+                        <div className="bg-slate-50/50 border-l-4 border-primary/20 animate-in slide-in-from-top-1 duration-200">
+                          {group.installments.map(inst => {
+                            const instPositive = inst.profitLoss >= 0;
+                            return (
+                              <div
+                                key={inst._id}
+                                className="flex items-center text-sm border-b border-border/40 hover:bg-slate-100/50 transition-colors"
+                              >
+                                <div className="pl-16 pr-4 py-3 w-[42%] flex items-center gap-2">
+                                   <div className="size-1.5 rounded-full bg-primary/30" />
+                                   <span className="text-[10px] font-black text-t-placeholder uppercase tracking-widest">
+                                     Bought on {formatDate(inst.purchaseDate)}
+                                   </span>
+                                </div>
+                                <div className="py-3 px-4 w-[12%] text-right font-bold text-t-secondary">
+                                  {formatINR(inst.currentValue)}
+                                </div>
+                                <div className="py-3 px-4 w-[10%] text-right">
+                                   <span className={`font-black text-[11px] ${instPositive ? 'text-positive' : 'text-negative'}`}>
+                                      {instPositive ? '+' : ''}{formatPercent(inst.returnPercent)}
+                                   </span>
+                                </div>
+                                <div className="py-3 pr-4 w-[10%] text-right text-[11px] font-medium text-t-secondary">
+                                   {inst.units.toFixed(2)} @ {formatNAV(inst.purchaseNAV)}
+                                </div>
+                                <div className="py-3 pr-4 w-[10%] text-right">
+                                   <span className="text-[10px] font-black uppercase tracking-tighter text-indigo-400 bg-indigo-50 px-1 rounded">
+                                      {inst.taxType?.replace('_', ' ')}
+                                   </span>
+                                </div>
+                                <div className="py-3 w-[12%] text-center">
+                                   <span className={`text-[10px] font-bold ${inst.isAboveBreakEven ? 'text-green-600' : 'text-amber-600'}`}>
+                                      BE: {formatNAV(inst.breakEvenNAV)}
+                                   </span>
+                                </div>
+                                
+                                {/* Individual Action Menu */}
+                                <div className="py-3 pr-4 w-[4%] flex justify-end">
+                                  <div className="relative">
+                                    <button
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        setOpenMenuId(openMenuId === inst._id ? null : inst._id);
+                                      }}
+                                      className="p-1 text-t-placeholder hover:text-t-primary hover:bg-slate-200 rounded transition-colors border-none bg-transparent cursor-pointer"
+                                    >
+                                      <MdOutlineMoreVert className="text-lg" />
+                                    </button>
+                                    {openMenuId === inst._id && (
+                                      <div
+                                        className="absolute right-0 top-8 w-40 bg-white rounded-lg shadow-2xl border border-slate-100 py-1 z-50 overflow-hidden"
+                                        onClick={e => e.stopPropagation()}
+                                      >
+                                        <button
+                                          className="w-full text-left px-4 py-2 text-xs uppercase tracking-wide font-black text-negative hover:bg-red-500 hover:text-white border-none bg-transparent cursor-pointer transition-colors"
+                                          onClick={() => {
+                                            setOpenMenuId(null);
+                                            setDeleteModalItem({ ...inst, fundName: `${inst.fundName} (Installment ${formatDate(inst.purchaseDate)})` });
+                                          }}
+                                        >
+                                          Delete
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </div>

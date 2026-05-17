@@ -37,7 +37,19 @@ exports.summary = async (req, res) => {
       User.findById(userId).select("riskPreference").lean(),
     ]);
 
-    const { totalInvested, totalCurrentValue, investments } = stats;
+    const { 
+      totalInvested, 
+      totalCurrentValue, 
+      investments, 
+      aggregatedInvestments,
+      equityValue,
+      weightedExpenseRatio,
+      categoryAllocation,
+      uniqueCategories,
+      uniqueAssetClasses,
+      earliestInvestmentDate
+    } = stats;
+
     const unrealizedProfit = totalCurrentValue - totalInvested;
     const totalProfit = realizedProfit + unrealizedProfit;
     const denominator = totalInvested + soldFundsCostBasis;
@@ -75,50 +87,21 @@ exports.summary = async (req, res) => {
       });
     }
 
-    let equityCurrentValue = 0;
-    let totalExpenseWeight = 0;
-    const categoryAllocation = {};
-    const assetClassAllocation = {};
-    const uniqueCategories = new Set();
-    const uniqueAssetClasses = new Set();
-
-    const processedFunds = investments.map((inv) => {
-      const category = portfolioService.simplifyCategory(inv.scheme_category);
-      const assetClass = calcService.getAssetClass(inv.scheme_category);
-      
-      uniqueCategories.add(category);
-      uniqueAssetClasses.add(assetClass);
-      
-      categoryAllocation[category] = (categoryAllocation[category] || 0) + inv.currentValue;
-      assetClassAllocation[assetClass] = (assetClassAllocation[assetClass] || 0) + inv.currentValue;
-
-      if (assetClass === "equity" || category === "Equity" || category === "Index" || category === "Tax-Saving") {
-        equityCurrentValue += inv.currentValue;
-      }
-      
-      // Professional Rule: Expense ratio is charged on Current Value, not Invested Amount
-      const expenseRatio = inv.expenseRatio || calcService.getDefaultExpenseRatio(inv.scheme_category);
-      totalExpenseWeight += inv.currentValue * expenseRatio;
-
-      const unrealizedPL = inv.currentValue - inv.investedAmount;
-      const plPercentage = (unrealizedPL / inv.investedAmount) * 100;
-
+    const processedFunds = aggregatedInvestments.map((inv) => {
       return {
         code: inv.scheme_code,
         fundName: inv.scheme_name,
-        category,
-        assetClass,
+        category: inv.category,
         currentNav: inv.currentNav,
         currentValue: inv.currentValue.toFixed(2),
-        unrealizedPL: unrealizedPL.toFixed(2),
-        plPercentage: plPercentage.toFixed(2) + "%",
+        unrealizedPL: inv.profitLoss.toFixed(2),
+        plPercentage: inv.plPercentage.toFixed(2) + "%",
       };
     });
 
     const totalProfitLoss = unrealizedProfit;
     const totalPLPercentage = totalInvested > 0 ? (unrealizedProfit / totalInvested) * 100 : 0;
-    const equityPercentage = totalCurrentValue > 0 ? (equityCurrentValue / totalCurrentValue) * 100 : 0;
-    const weightedExpenseRatio = totalCurrentValue > 0 ? totalExpenseWeight / totalCurrentValue : 0;
+    const equityPercentage = totalCurrentValue > 0 ? (equityValue / totalCurrentValue) * 100 : 0;
     const assetClassCount = uniqueAssetClasses.size;
     const categoryCount = uniqueCategories.size;
 
@@ -164,7 +147,7 @@ exports.summary = async (req, res) => {
     
     // Calculate total required SIP for all goals
     const now = new Date();
-    const holdingYears = calcService.getYearsBetween(stats.earliestInvestmentDate, now);
+    const holdingYears = calcService.getYearsBetween(earliestInvestmentDate, now);
     const annualReturn = calcService.calculateCAGR(totalInvested, totalCurrentValue, holdingYears);
     // Professional Rule: Apply a floor (5%) and ceiling (18%) for realistic projections
     const annualReturnPct = Math.max(5, Math.min(18, annualReturn * 100));
@@ -198,12 +181,12 @@ exports.summary = async (req, res) => {
     if (equityPercentage > 85) tips.push("Your portfolio is heavily weighted in equity. Consider adding Debt funds for stability.");
     if (equityPercentage < 40) tips.push("Your portfolio has low equity exposure. Consider adding Equity funds for growth potential.");
     if (weightedExpenseRatio > 1.0) tips.push("Your portfolio has a high weighted expense ratio. Consider switching to funds with lower expense ratios.");
-    if (categoryCount === 1) tips.push("Your portfolio is concentrated in one category. Consider diversifying across more categories.");
+    if (assetClassCount === 1) tips.push("Your portfolio is concentrated in one asset class. Consider diversifying across Debt and Hybrid funds.");
     if (goalsCount === 0) tips.push("Link your investments to financial goals to stay motivated.");
     if (sipsCount === 0) tips.push("Set up a monthly SIP to automate your wealth creation.");
 
     const donutChartData = Object.keys(categoryAllocation).map((cat) => ({
-      name: cat,
+      name: cat.charAt(0).toUpperCase() + cat.slice(1), // Capitalize for UI
       value: categoryAllocation[cat].toFixed(2),
       percentage: ((categoryAllocation[cat] / totalCurrentValue) * 100).toFixed(2) + "%",
     }));

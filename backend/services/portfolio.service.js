@@ -1,21 +1,22 @@
 const axios = require('axios');
 const Investment = require('../models/Investment');
+const calcService = require('./calculation.service');
 
 /**
  * Normalizes complex fund categories into a few standard buckets
  * for charting and analysis.
  * @param {string} category - Raw category from MF API
- * @returns {string} - Simplified category
+ * @returns {string} - Simplified category (lowercase)
  */
 const simplifyCategory = (category) => {
-  if (!category) return "Other";
+  if (!category) return "other";
   const cat = category.toLowerCase();
 
   // Index funds
-  if (cat.includes("index") || cat.includes("etf")) return "Index";
+  if (cat.includes("index") || cat.includes("etf")) return "index";
 
   // Tax saving
-  if (cat.includes("tax") || cat.includes("elss")) return "Tax-Saving";
+  if (cat.includes("tax") || cat.includes("elss")) return "tax-saving";
 
   // Equity
   if (
@@ -30,7 +31,7 @@ const simplifyCategory = (category) => {
     cat.includes("arbitrage") ||
     cat.includes("growth")
   )
-    return "Equity";
+    return "equity";
 
   // Debt & Liquid
   if (
@@ -44,12 +45,12 @@ const simplifyCategory = (category) => {
     cat.includes("duration") ||
     cat.includes("psu")
   )
-    return "Debt";
+    return "debt";
 
   // Hybrid
-  if (cat.includes("hybrid") || cat.includes("balanced")) return "Hybrid";
+  if (cat.includes("hybrid") || cat.includes("balanced")) return "hybrid";
 
-  return "Other";
+  return "other";
 };
 
 /**
@@ -111,8 +112,10 @@ const getPortfolioStats = async (userId, options = {}) => {
       equityValue: 0,
       equityPercentage: 0,
       investments: [],
+      aggregatedInvestments: [],
       categoryAllocation: {},
       uniqueCategories: new Set(),
+      uniqueAssetClasses: new Set(),
       weightedExpenseRatio: 0,
     };
   }
@@ -125,33 +128,38 @@ const getPortfolioStats = async (userId, options = {}) => {
   let equityValue = 0;
   let totalExpenseWeight = 0;
   let earliestInvestmentDate = new Date();
+  
   const categoryAllocation = {};
   const uniqueCategories = new Set();
+  const uniqueAssetClasses = new Set();
+  const aggregatedMap = {};
 
   const processedInvestments = investments.map(inv => {
     const currentNav = navMap[inv.scheme_code] || inv.purchaseNAV;
     const currentValue = inv.units * currentNav;
     const category = simplifyCategory(inv.scheme_category);
+    const assetClass = calcService.getAssetClass(inv.scheme_category);
 
     totalInvested += inv.investedAmount;
     totalCurrentValue += currentValue;
 
     uniqueCategories.add(category);
+    uniqueAssetClasses.add(assetClass);
     categoryAllocation[category] = (categoryAllocation[category] || 0) + currentValue;
 
-    if (category === "Equity" || category === "Index" || category === "Tax-Saving") {
+    if (category === "equity" || category === "index" || category === "tax-saving") {
       equityValue += currentValue;
     }
 
     const expenseRatio = inv.expenseRatio || 1.0;
-    totalExpenseWeight += inv.investedAmount * expenseRatio;
+    totalExpenseWeight += currentValue * expenseRatio; // Based on CMV
 
     const purchaseDate = new Date(inv.purchaseDate);
     if (purchaseDate < earliestInvestmentDate) {
       earliestInvestmentDate = purchaseDate;
     }
 
-    return {
+    const enrichedInv = {
       ...inv,
       currentNav,
       currentValue,
@@ -159,6 +167,36 @@ const getPortfolioStats = async (userId, options = {}) => {
       profitLoss: currentValue - inv.investedAmount,
       plPercentage: ((currentValue - inv.investedAmount) / inv.investedAmount) * 100,
     };
+
+    // Grouping logic for UI Position View
+    if (!aggregatedMap[inv.scheme_code]) {
+      aggregatedMap[inv.scheme_code] = {
+        scheme_code: inv.scheme_code,
+        scheme_name: inv.scheme_name,
+        scheme_category: inv.scheme_category,
+        category,
+        investedAmount: 0,
+        currentValue: 0,
+        units: 0,
+        purchaseNAV: 0, // Will be weighted average
+        currentNav,
+      };
+    }
+    
+    const agg = aggregatedMap[inv.scheme_code];
+    agg.investedAmount += inv.investedAmount;
+    agg.currentValue += currentValue;
+    agg.units += inv.units;
+
+    return enrichedInv;
+  });
+
+  // Calculate weighted average purchase NAV for aggregated view
+  const aggregatedInvestments = Object.values(aggregatedMap).map(agg => {
+    agg.purchaseNAV = agg.units > 0 ? agg.investedAmount / agg.units : 0;
+    agg.profitLoss = agg.currentValue - agg.investedAmount;
+    agg.plPercentage = agg.investedAmount > 0 ? (agg.profitLoss / agg.investedAmount) * 100 : 0;
+    return agg;
   });
 
   const totalProfitLoss = totalCurrentValue - totalInvested;
@@ -172,10 +210,12 @@ const getPortfolioStats = async (userId, options = {}) => {
     equityValue,
     equityPercentage: totalCurrentValue > 0 ? (equityValue / totalCurrentValue) * 100 : 0,
     investments: processedInvestments,
+    aggregatedInvestments,
     categoryAllocation,
     uniqueCategories,
-    weightedExpenseRatio: totalInvested > 0 ? totalExpenseWeight / totalInvested : 0,
-    fullDataMap, // Only populated if includeHistory is true
+    uniqueAssetClasses,
+    weightedExpenseRatio: totalCurrentValue > 0 ? totalExpenseWeight / totalCurrentValue : 0,
+    fullDataMap,
   };
 };
 

@@ -36,7 +36,7 @@ const gradeColors = {
 const Profile = () => {
   const { user } = useContext(AuthContext);
 
-  const [toast, setToast] = useState('');
+  const [toast, setToast] = useState({ msg: '', type: 'success' });
   const [goals, setGoals] = useState([]);
   const [portfolio, setPortfolio] = useState({
     totalCurrentValue: 0,
@@ -55,9 +55,9 @@ const Profile = () => {
   const [goalErrors, setGoalErrors] = useState({});
   const [goalSaving, setGoalSaving] = useState(false);
 
-  const showToast = msg => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 4000);
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast({ msg: '', type: 'success' }), 4000);
   };
 
   const formatCur = val =>
@@ -110,7 +110,7 @@ const Profile = () => {
       setTaxData(tPayload?.taxInfo || null);
     } catch (error) {
       console.error(error);
-      showToast('Unable to load profile data.');
+      showToast('Unable to load profile data.', 'error');
     } finally {
       setLoading(false);
     }
@@ -180,7 +180,7 @@ const Profile = () => {
       setGoalModal({ isOpen: false, mode: 'Add', data: null });
       fetchDashboardData();
     } catch (error) {
-      showToast(error.response?.data?.message || 'Failed to save goal.');
+      showToast(error.response?.data?.message || 'Failed to save goal.', 'error');
     } finally {
       setGoalSaving(false);
     }
@@ -310,7 +310,7 @@ const Profile = () => {
 
   return (
     <div className="flex-1 p-4 md:p-8 space-y-8 max-w-350 mx-auto w-full pb-24">
-      <Toast message={toast} />
+      <Toast message={toast.msg} type={toast.type} />
 
       <div className="flex justify-between items-center gap-4">
         <div>
