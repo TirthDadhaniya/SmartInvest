@@ -5,51 +5,48 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=flat-square&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-SmartInvest is a high-performance, full-stack personal mutual fund portfolio manager designed for precision tracking and intelligent analysis. Built with the MERN stack, it provides a secure, data-driven environment for managing wealth through live NAV integration, advanced financial simulations, and automated goal tracking.
+SmartInvest is a high-performance, full-stack personal mutual fund portfolio manager designed for precision tracking and institutional-grade analysis. Built with the MERN stack, it provides a secure, data-driven environment for managing wealth through live NAV integration, advanced financial simulations, and automated goal tracking compliant with **Union Budget 2024** standards.
 
 ---
 
 ## 🌟 Key Features
 
-### 📊 Portfolio Intelligence
-- **Real-time Dashboard**: Live tracking of Net worth, Total Returns, and P&L using external MF APIs.
-- **Health Score**: A proprietary 0-100 grading system assessing diversification, risk-matching, and cost-efficiency.
-- **Asset Allocation**: Dynamic visualization of portfolio distribution across Equity, Debt, Hybrid, and Index funds.
-- **Expense Drain Analysis**: Calculates the 10-year opportunity cost of fund management fees.
+### 📊 Portfolio Intelligence & Aggregation
+- **Unified Positions**: Automatically groups individual SIP/Lumpsum installments into a clean aggregated view with weighted average cost basis and expandable sub-rows for detail.
+- **Health Score (6 Pillars)**: A proprietary grading system assessing Diversification (Asset-Class based), Risk-Matching, Cost-Efficiency, Goal Alignment, and SIP Coverage.
+- **Asset Allocation**: Dynamic visualization of portfolio distribution across Equity, Debt, Hybrid, and Liquid assets.
+- **Compounded Expense Analysis**: Visualizes the "Silent Fee" impact by calculating the 10-year compounded opportunity cost of fund management fees.
 
 ### 🎯 Goal-Oriented Investing
-- **Financial Goal Tracking**: Create and monitor objectives like "Retirement" or "Dream House."
-- **Gap Analysis**: Real-time projection of future goal values vs. current performance.
-- **SIP Recommender**: Automatically calculates the additional monthly investment needed to bridge goal shortfalls.
+- **Financial Goal Tracking**: Create and monitor objectives using **Time Value of Money (TVM)** principles.
+- **Gap Analysis**: Real-time projection of future values using historical CAGR with safety rails (5% floor / 18% ceiling).
+- **Annuity SIP Recommender**: Mathematically calculates the exact monthly investment needed to bridge goal shortfalls.
 
 ### 🛠️ Investment Management
-- **Smart Buy/Sell**: Handles weighted average cost basis (NAV) for partial redemptions and multi-date top-ups.
-- **SIP Automation**: Manage active, paused, and stopped Systematic Investment Plans with next-due-date logic.
-- **Tax Estimator (LTCG)**: Estimates long-term capital gains tax liabilities based on current Indian tax laws (1L exemption logic).
-- **Break-even Analysis**: Calculates the minimum NAV required to exit a fund profitably after accounting for exit loads.
+- **Tax Estimator (Budget 2024)**: Precise estimation of Equity LTCG (12.5% after ₹1.25L exemption), STCG (20%), and Debt taxation (slab rate).
+- **Professional Break-Even**: Calculates the true "No-Profit" point accounting for **Stamp Duty (0.005%)**, **STT (0.001%)**, and graded **Exit Loads**.
+- **SIP Automation**: Manage active, paused, and stopped Systematic Investment Plans with automatic latest NAV fetching and 15-day early payment windows.
 
 ### 📉 Risk & Simulation
-- **What-If Simulations**: Historical backtesting—see what ₹10k invested 3 years ago would be worth today.
-- **Stress Testing**: Simulates portfolio impact under "Moderate Correction" and "Severe Market Crash" scenarios.
+- **Market Stress Testing**: Simulates portfolio performance under historical "Moderate Correction" and "Severe Black-Swan Crash" scenarios.
+- **What-If Backtesting**: backtesting—see what ₹10k invested at any point in history would be worth today using real NAV data arrays.
 
 ---
 
 ## 🏗️ Technical Architecture & Optimizations
 
-### Backend (Production Refined)
-- **Performance**: Extensive use of Mongoose `.lean()` queries for ultra-fast, read-only data retrieval.
+### Backend (Precision Engine)
+- **Data Integrity**: Multi-tier position tracking preserves granular purchase history for tax accuracy while delivering aggregated summaries for the UI.
+- **Performance**: Extensive use of Mongoose `.lean()` and concurrent `Promise.all` fetching for sub-second dashboard loads.
 - **Security**: 
   - Integrated `express-rate-limit` to safeguard against brute-force attacks.
   - HTTP-only cookie-based JWT authentication for secure session management.
-- **Reliability**: Centralized Zod validation layer ensuring strict data integrity across all 30+ API endpoints.
-- **Logging**: Custom `requestLogger` middleware for detailed operational visibility.
-- **Documentation**: Fully documented codebase using JSDoc for maintainability and developer onboarding.
+- **Reliability**: Centralized Zod validation layer ensuring strict data integrity across all API endpoints.
 
 ### Frontend (User Experience Focused)
-- **Consistency**: Global `max-w-[1400px]` layout ensuring a professional aesthetic across all resolutions.
 - **Speed**: Reusable `PageSkeletons` mirror the UI during data fetching for a zero-jank experience.
 - **Modularity**: Extracted repetitive logic into shared components like `Toast`, `FundSearch`, and `AppShell`.
-- **Visualization**: Data-rich charts powered by `Recharts` for intuitive portfolio analysis.
+- **Visualization**: Data-rich interactive charts powered by `Recharts` for intuitive portfolio analysis.
 
 ---
 
@@ -81,7 +78,7 @@ SmartInvest/
 
 **Frontend:** React 18, Vite, Tailwind CSS, Recharts, React Icons  
 **Backend:** Node.js, Express.js, JWT, Zod, Cookie-Parser  
-**Database:** MongoDB Atlas via Mongoose  
+**Database:** MongoDB via Mongoose  
 **External API:** [MFAPI.in](https://api.mfapi.in) for live Mutual Fund data
 
 ---
