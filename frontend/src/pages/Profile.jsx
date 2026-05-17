@@ -44,6 +44,7 @@ const Profile = () => {
     totalInvested: 0,
   });
   const [reportCard, setReportCard] = useState(null);
+  const [taxData, setTaxData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [goalModal, setGoalModal] = useState({ isOpen: false, mode: 'Add', data: null });
   const [goalFormData, setGoalFormData] = useState({
@@ -85,10 +86,11 @@ const Profile = () => {
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      const [goalsRes, portRes, rcRes] = await Promise.all([
+      const [goalsRes, portRes, rcRes, taxRes] = await Promise.all([
         api.get('/api/portfolio/goal-gaps').catch(() => ({ data: { data: [] } })),
         api.get('/api/portfolio/summary'),
         api.get('/api/portfolio/report-card').catch(() => ({ data: { data: null } })),
+        api.get('/api/portfolio/tax-analysis').catch(() => ({ data: { data: null } })),
       ]);
 
       const goalsPayload = goalsRes.data?.success ? goalsRes.data.data : goalsRes.data;
@@ -103,6 +105,9 @@ const Profile = () => {
 
       const rcPayload = rcRes.data?.data || (rcRes.data?.success ? rcRes.data.data : null);
       setReportCard(rcPayload);
+
+      const tPayload = taxRes.data?.data || (taxRes.data?.success ? taxRes.data.data : null);
+      setTaxData(tPayload?.taxInfo || null);
     } catch (error) {
       console.error(error);
       showToast('Unable to load profile data.');
@@ -345,51 +350,62 @@ const Profile = () => {
 
           <section className="bg-surface rounded-xl shadow-sm border border-border p-6">
             <h3 className="text-base font-bold text-t-primary mb-1 flex items-center gap-2">
-              <MdOutlineSecurity className="text-primary" /> Tax Estimator (LTCG)
+              <MdOutlineSecurity className="text-indigo-600" /> Tax Estimator
             </h3>
-            <p className="text-xs text-t-secondary mb-5 leading-relaxed">
-              Estimate based on current portfolio gains.
+            <p className="text-[10px] text-t-secondary mb-5 font-bold uppercase tracking-wider">
+              Budget 2024 Standards
             </p>
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center border-b border-border pb-2">
-                <span className="text-sm font-bold text-t-secondary">Portfolio Profit</span>
-                <span
-                  className={`text-sm font-black ${portfolio.totalProfitLoss > 0 ? 'text-positive' : 'text-negative'}`}
-                >
-                  {formatCur(portfolio.totalProfitLoss)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center border-b border-border pb-2">
-                <span className="text-sm font-bold text-t-secondary">Exemption Limit</span>
-                <span className="text-sm font-bold text-t-primary">{formatCur(taxLimit)}</span>
-              </div>
-              <div className="flex justify-between items-center pt-1">
-                <span className="text-base font-extrabold text-t-primary">Estimated Tax</span>
-                <span
-                  className={`text-xl font-black ${estimatedTax > 0 ? 'text-amber-600' : 'text-t-placeholder'}`}
-                >
-                  {formatCur(estimatedTax)}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              {(noTax || underLimit) && (
-                <div className="bg-green-50 border border-green-200 text-green-800 p-3 rounded-lg flex items-start gap-2 text-[10px] font-bold uppercase tracking-tight">
-                  <MdOutlineCheckCircle className="text-base shrink-0" /> No tax liability at
-                  current levels.
-                </div>
-              )}
-              {estimatedTax > 0 && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg flex items-start gap-2 text-[10px] font-bold uppercase tracking-tight">
-                  <MdOutlineWarning className="text-base shrink-0 mt-0.5" />
-                  <p>
-                    Taxable amount: <strong>{formatCur(taxableProfit)}</strong>
+            {taxData ? (
+              <div className="space-y-4">
+                <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl text-center">
+                  <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest mb-1">
+                    Total Estimated Tax
+                  </p>
+                  <p className="text-2xl font-black text-indigo-900">
+                    {formatCur(taxData.totalTax)}
                   </p>
                 </div>
-              )}
-            </div>
+
+                <div className="space-y-2.5 px-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-t-secondary">Equity LTCG (12.5%)</span>
+                    <span className="font-black text-t-primary">
+                      {formatCur(taxData.estimatedLTCGTax)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-t-secondary">Equity STCG (20%)</span>
+                    <span className="font-black text-t-primary">
+                      {formatCur(taxData.estimatedSTCGTax)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-t-secondary">Debt / Slab Rate</span>
+                    <span className="font-black text-t-primary">
+                      {formatCur(taxData.estimatedDebtTax)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-border mt-2">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <MdOutlineCheckCircle className="text-green-500 text-sm" />
+                    <span className="text-[10px] font-black text-green-700 uppercase tracking-wider">
+                      Exemption Applied
+                    </span>
+                  </div>
+                  <p className="text-xs text-t-secondary leading-relaxed">
+                    First <strong>{formatCur(taxData.ltcgExemption)}</strong> of annual Equity LTCG
+                    is tax-free.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="py-8 text-center">
+                <p className="text-xs text-t-placeholder font-bold italic">No tax data available</p>
+              </div>
+            )}
           </section>
         </div>
 

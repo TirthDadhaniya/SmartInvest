@@ -56,6 +56,7 @@ const MyInvestments = () => {
   const [toastMsg, setToastMsg] = useState('');
 
   const [investments, setInvestments] = useState([]);
+  const [taxSummary, setTaxSummary] = useState(null);
   const [historyCache, setHistoryCache] = useState({});
 
   const [search, setSearch] = useState('');
@@ -86,8 +87,11 @@ const MyInvestments = () => {
         api.get('/api/portfolio/break-even'),
       ]);
 
-      const taxData = taxRes.data.success ? taxRes.data.data.investments : [];
+      const taxInfo = taxRes.data.success ? taxRes.data.data : { summary: {}, investments: [] };
+      const taxData = taxInfo.investments || [];
       const beData = beRes.data.success ? beRes.data.data : [];
+
+      setTaxSummary(taxInfo.taxInfo);
 
       const mergedInvs = taxData.map(t => {
         const be = beData.find(b => b._id === t._id) || {};
@@ -108,6 +112,7 @@ const MyInvestments = () => {
           units: t.units,
           afterTaxProfit: t.afterTaxProfit,
           estimatedTax: t.estimatedTax,
+          taxType: t.taxType,
           breakEvenNAV: be.breakEvenNAV,
           isAboveBreakEven: be.isAboveBreakEven,
           exitLoadPct: be.exitLoadPct,
@@ -452,6 +457,88 @@ const MyInvestments = () => {
         </div>
       </div>
 
+      {/* Compact Tax Analysis Summary */}
+      {taxSummary && investments.length > 0 && (
+        <section className="bg-white rounded-xl border border-border shadow-sm p-4 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <MdOutlinePieChart className="text-xl" />
+            </div>
+            <div>
+              <h2 className="text-sm font-black text-t-primary leading-tight">
+                Tax Liability <span className="text-[10px] text-t-placeholder font-bold">(Budget 2024)</span>
+              </h2>
+              <p className="text-[10px] text-t-secondary font-bold">
+                Combined Est. (Equity + Debt)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+            <div className="text-center md:text-left relative group">
+              <div className="flex items-center justify-center md:justify-start gap-1">
+                <p className="text-[9px] font-black text-t-secondary uppercase tracking-widest">
+                  Total Tax
+                </p>
+                <MdOutlineInfo className="text-[10px] text-t-placeholder cursor-help" />
+                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block w-48 bg-slate-800 text-white text-[9px] p-2 rounded shadow-xl z-50 leading-relaxed">
+                  Includes <strong>LTCG (12.5%)</strong>, <strong>STCG (20%)</strong>, and{' '}
+                  <strong>Debt gains</strong> estimated at a standard slab rate. Actual liability
+                  depends on your income bracket.
+                </div>
+              </div>
+              <p className="text-xl font-black text-indigo-600">
+                {formatINR(taxSummary.totalTax)}
+              </p>
+            </div>
+
+            <div className="h-8 w-px bg-border hidden lg:block" />
+
+            <div className="text-center md:text-left">
+              <p className="text-[9px] font-black text-t-secondary uppercase tracking-widest mb-0.5">
+                Equity LTCG (12.5%)
+              </p>
+              <p className="text-sm font-bold text-t-primary">
+                {formatINR(taxSummary.estimatedLTCGTax)}
+                <span className="text-[10px] text-t-placeholder ml-1 font-medium">on {formatINR(taxSummary.equityLTCGProfit)}</span>
+              </p>
+            </div>
+
+            <div className="text-center md:text-left">
+              <p className="text-[9px] font-black text-t-secondary uppercase tracking-widest mb-0.5">
+                Equity STCG (20%)
+              </p>
+              <p className="text-sm font-bold text-t-primary">
+                {formatINR(taxSummary.estimatedSTCGTax)}
+                <span className="text-[10px] text-t-placeholder ml-1 font-medium">on {formatINR(taxSummary.equitySTCGProfit)}</span>
+              </p>
+            </div>
+
+            <div className="text-center md:text-left group relative">
+              <div className="flex items-center justify-center md:justify-start gap-1">
+                <p className="text-[9px] font-black text-t-secondary uppercase tracking-widest">
+                  Debt / Slab (Est.)
+                </p>
+                <MdOutlineInfo className="text-[10px] text-t-placeholder cursor-help" />
+                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block w-48 bg-slate-800 text-white text-[9px] p-2 rounded shadow-xl z-50 leading-relaxed">
+                  Gains from <strong>Debt & Liquid funds</strong> are taxed at your income slab
+                  rate. We estimate this at a standard <strong>30%</strong> for safety.
+                </div>
+              </div>
+              <p className="text-sm font-bold text-t-primary">
+                {formatINR(taxSummary.estimatedDebtTax)}
+                <span className="text-[10px] text-t-placeholder ml-1 font-medium">on {formatINR(taxSummary.debtProfit)}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-indigo-50/50 border border-indigo-100 px-4 py-2 rounded-lg text-center md:text-right">
+             <p className="text-[9px] font-black text-indigo-700 uppercase tracking-widest">LTCG Exemption</p>
+             <p className="text-sm font-black text-indigo-900">{formatINR(taxSummary.ltcgExemption)}</p>
+          </div>
+        </section>
+      )}
+
       {/* Filter Bar */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-surface p-4 rounded-xl border border-border shadow-sm">
         <div className="relative w-full md:w-80">
@@ -605,12 +692,17 @@ const MyInvestments = () => {
                           {formatPercent(item.returnPercent)}
                         </div>
                         {item.afterTaxProfit !== undefined && (
-                          <div className="text-[10px] mt-0.5 text-right">
+                          <div className="text-[10px] mt-0.5 text-right flex flex-col items-end">
                             {item.estimatedTax > 0 ? (
-                              <span className="text-slate-400">
-                                After tax:{' '}
-                                <span className="font-bold">{formatINR(item.afterTaxProfit)}</span>
-                              </span>
+                              <>
+                                <span className="text-slate-400">
+                                  After tax:{' '}
+                                  <span className="font-bold">{formatINR(item.afterTaxProfit)}</span>
+                                </span>
+                                <span className="text-[8px] font-black uppercase tracking-tighter text-indigo-400 bg-indigo-50 px-1 rounded">
+                                  {item.taxType?.replace('_', ' ')}
+                                </span>
+                              </>
                             ) : (
                               <span className="text-green-500 font-bold">No tax liability</span>
                             )}
